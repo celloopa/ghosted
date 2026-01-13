@@ -94,7 +94,7 @@ Examples:
 // cmdAdd adds a new application from JSON input
 func cmdAdd(s *store.Store, args []string) {
 	if len(args) < 2 || args[0] != "--json" {
-		fmt.Fprintln(os.Stderr, "Usage: jobtrack add --json '<json>'")
+		fmt.Fprintln(os.Stderr, "Usage: ghosted add --json '<json>'")
 		os.Exit(1)
 	}
 
@@ -171,7 +171,7 @@ func cmdList(s *store.Store, args []string) {
 // cmdGet gets a single application by ID
 func cmdGet(s *store.Store, args []string) {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "Usage: jobtrack get <id> [--json]")
+		fmt.Fprintln(os.Stderr, "Usage: ghosted get <id> [--json]")
 		os.Exit(1)
 	}
 
@@ -233,7 +233,7 @@ func cmdGet(s *store.Store, args []string) {
 // cmdUpdate updates an existing application
 func cmdUpdate(s *store.Store, args []string) {
 	if len(args) < 3 || args[1] != "--json" {
-		fmt.Fprintln(os.Stderr, "Usage: jobtrack update <id> --json '<json>'")
+		fmt.Fprintln(os.Stderr, "Usage: ghosted update <id> --json '<json>'")
 		os.Exit(1)
 	}
 
@@ -325,7 +325,7 @@ func cmdUpdate(s *store.Store, args []string) {
 // cmdDelete deletes an application
 func cmdDelete(s *store.Store, args []string) {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "Usage: jobtrack delete <id>")
+		fmt.Fprintln(os.Stderr, "Usage: ghosted delete <id>")
 		os.Exit(1)
 	}
 

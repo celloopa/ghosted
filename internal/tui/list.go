@@ -293,12 +293,12 @@ func (l *ListView) renderHeader() string {
 	company := truncate("COMPANY", companyW)
 	position := truncate("POSITION", positionW)
 	status := truncate("STATUS", statusW)
-	date := truncate("APPLIED", dateW)
+	date := truncate("DATE SENT", dateW)
 
 	header := fmt.Sprintf("%-*s %-*s %-*s %-*s",
 		companyW, company,
 		positionW, position,
-		statusW, status,
+		statusW+10, status, // Match row padding for ANSI codes
 		dateW, date,
 	)
 

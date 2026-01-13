@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/cello_r/jobtrack/schema.json",
+  "$id": "https://github.com/celloopa/ghosted/schema.json",
   "title": "Job Application",
-  "description": "Schema for job application entries in jobtrack",
+  "description": "Schema for job application entries in ghosted",
   "type": "object",
   "required": ["company", "position"],
   "properties": {

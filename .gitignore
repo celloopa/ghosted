@@ -1,6 +1,5 @@
 # Binary
 ghosted
-jobtrack
 
 # IDE
 .idea/
@@ -12,8 +11,7 @@ jobtrack
 .DS_Store
 Thumbs.db
 
-# Claude context (local only)
-CLAUDE.md
+# Claude local settings (user-specific)
 .claude/
 
 # Agent working files
