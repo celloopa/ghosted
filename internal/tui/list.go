@@ -197,9 +197,14 @@ func (l *ListView) View() string {
 
 	var b strings.Builder
 
-	// Title
-	title := TitleStyle.Render("Job Applications")
-	b.WriteString(title)
+	// Title with ghost ASCII art
+	ghost := `   ██████╗ ██╗  ██╗ ██████╗ ███████╗████████╗███████╗██████╗
+  ██╔════╝ ██║  ██║██╔═══██╗██╔════╝╚══██╔══╝██╔════╝██╔══██╗
+  ██║  ███╗███████║██║   ██║███████╗   ██║   █████╗  ██║  ██║
+  ██║   ██║██╔══██║██║   ██║╚════██║   ██║   ██╔══╝  ██║  ██║
+  ╚██████╔╝██║  ██║╚██████╔╝███████║   ██║   ███████╗██████╔╝
+   ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   ╚══════╝╚═════╝ `
+	b.WriteString(SubtleStyle.Render(ghost))
 	b.WriteString("\n\n")
 
 	// Search input if in search mode
@@ -233,10 +238,10 @@ func (l *ListView) View() string {
 		// Header
 		header := l.renderHeader()
 		b.WriteString(header)
-		b.WriteString("\n")
+		b.WriteString("\n\n")
 
 		// Calculate visible rows
-		listHeight := l.height - 10 // Account for header, footer, etc.
+		listHeight := l.height - 12 // Account for header, footer, spacing, etc.
 		if listHeight < 3 {
 			listHeight = 3
 		}
@@ -268,10 +273,10 @@ func (l *ListView) View() string {
 
 	// Help
 	if l.showHelp {
-		b.WriteString("\n")
+		b.WriteString("\n\n")
 		b.WriteString(l.renderFullHelp())
 	} else {
-		b.WriteString("\n")
+		b.WriteString("\n\n")
 		b.WriteString(l.renderShortHelp())
 	}
 

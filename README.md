@@ -1,15 +1,23 @@
-# jobtrack
+# GHOSTED 👻
 
-A terminal-based job application tracker built with Go and [Charm](https://charm.sh) libraries.
+```
+     .-.
+    (o o)  GHOSTED
+    | O |  job application tracker
+    |   |  for the perpetually ghosted
+    '~~~'
+```
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+A terminal-based job application tracker for those of us who know the void all too well.
+
+Built with Go and [Charm](https://charm.sh) libraries.
 
 ## Features
 
 - **Interactive TUI** - Full keyboard-driven interface with vim-style navigation
 - **CLI Commands** - Script-friendly commands for automation and AI agents
 - **JSON Storage** - Human-readable data format, easy to backup and version control
-- **Status Pipeline** - Track applications from saved → applied → interview → offer
+- **Status Pipeline** - Track applications from saved → applied → ghosted into oblivion
 - **Search & Filter** - Quickly find applications by company, position, or status
 - **Quick Actions** - Change status with single keystrokes (1-8)
 
@@ -18,16 +26,16 @@ A terminal-based job application tracker built with Go and [Charm](https://charm
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/jobtrack.git
-cd jobtrack
-go build -o jobtrack
-./jobtrack
+git clone https://github.com/yourusername/ghosted.git
+cd ghosted
+go build -o ghosted
+./ghosted
 ```
 
 ### Go Install
 
 ```bash
-go install github.com/yourusername/jobtrack@latest
+go install github.com/yourusername/ghosted@latest
 ```
 
 ## Usage
@@ -35,7 +43,7 @@ go install github.com/yourusername/jobtrack@latest
 ### Interactive TUI
 
 ```bash
-jobtrack
+ghosted
 ```
 
 **Keyboard Shortcuts:**
@@ -68,36 +76,36 @@ jobtrack
 
 ```bash
 # Add new application
-jobtrack add --json '{"company":"Acme","position":"Engineer","salary_min":150000}'
+ghosted add --json '{"company":"Acme","position":"Engineer","salary_min":150000}'
 
 # List all applications
-jobtrack list
-jobtrack list --json
+ghosted list
+ghosted list --json
 
 # Get single application (supports partial ID)
-jobtrack get abc123
-jobtrack get abc123 --json
+ghosted get abc123
+ghosted get abc123 --json
 
 # Update application
-jobtrack update abc123 --json '{"status":"interview","notes":"Phone screen scheduled"}'
+ghosted update abc123 --json '{"status":"interview","notes":"Phone screen scheduled"}'
 
 # Delete application
-jobtrack delete abc123
+ghosted delete abc123
 
 # Help
-jobtrack help
+ghosted help
 ```
 
 ## Data Storage
 
 By default, data is stored at:
 ```
-~/.local/share/jobtrack/applications.json
+~/.local/share/ghosted/applications.json
 ```
 
 Override with environment variable:
 ```bash
-export JOBTRACK_DATA=/path/to/your/applications.json
+export GHOSTED_DATA=/path/to/your/applications.json
 ```
 
 ### Sample Data
@@ -105,7 +113,7 @@ export JOBTRACK_DATA=/path/to/your/applications.json
 New installations are seeded with 3 sample applications to help you get started. Delete them with `d` in the TUI or start fresh:
 
 ```bash
-rm ~/.local/share/jobtrack/applications.json
+rm ~/.local/share/ghosted/applications.json
 ```
 
 ## JSON Schema
@@ -178,7 +186,7 @@ This directory is gitignored by default.
 ### Building
 
 ```bash
-go build -o jobtrack
+go build -o ghosted
 ```
 
 ### Dependencies
@@ -194,3 +202,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Contributing
 
 Contributions welcome! Please feel free to submit a Pull Request.
+
+---
+
+*Built with tears and mass rejection emails* 💀

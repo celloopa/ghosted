@@ -62,11 +62,16 @@ func runTUI(s *store.Store) {
 }
 
 func printHelp() {
-	fmt.Println(`jobtrack - Job Application Tracker
+	fmt.Println(`
+     .-.
+    (o o)  GHOSTED
+    | O |  job application tracker
+    |   |  for the perpetually ghosted
+    '~~~'
 
 Usage:
-  jobtrack              Launch interactive TUI
-  jobtrack <command>    Run a command
+  ghosted              Launch interactive TUI
+  ghosted <command>    Run a command
 
 Commands:
   add --json '<json>'   Add a new application from JSON
@@ -77,13 +82,13 @@ Commands:
   help                  Show this help
 
 Environment:
-  JOBTRACK_DATA         Path to data file (default: ~/.local/share/jobtrack/applications.json)
+  GHOSTED_DATA         Path to data file (default: ~/.local/share/ghosted/applications.json)
 
 Examples:
-  jobtrack add --json '{"company":"Acme Corp","position":"Software Engineer"}'
-  jobtrack list --json
-  jobtrack update abc123 --json '{"status":"interview"}'
-  jobtrack delete abc123`)
+  ghosted add --json '{"company":"Acme Corp","position":"Software Engineer"}'
+  ghosted list --json
+  ghosted update abc123 --json '{"status":"interview"}'
+  ghosted delete abc123`)
 }
 
 // cmdAdd adds a new application from JSON input
@@ -356,16 +361,16 @@ func cmdDelete(s *store.Store, args []string) {
 
 func getDataPath() string {
 	// Check for environment variable override
-	if path := os.Getenv("JOBTRACK_DATA"); path != "" {
+	if path := os.Getenv("GHOSTED_DATA"); path != "" {
 		return path
 	}
 
-	// Default to ~/.local/share/jobtrack/applications.json
+	// Default to ~/.local/share/ghosted/applications.json
 	// or current directory if home not available
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "data/applications.json"
 	}
 
-	return filepath.Join(home, ".local", "share", "jobtrack", "applications.json")
+	return filepath.Join(home, ".local", "share", "ghosted", "applications.json")
 }

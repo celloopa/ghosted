@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"jobtrack/internal/model"
 	"jobtrack/internal/store"
@@ -15,12 +16,16 @@ import (
 type ViewState int
 
 const (
-	ViewList ViewState = iota
+	ViewSplash ViewState = iota
+	ViewList
 	ViewDetail
 	ViewForm
 	ViewFilter
 	ViewConfirmDelete
 )
+
+// splashDoneMsg signals the splash screen is done
+type splashDoneMsg struct{}
 
 // App is the main Bubble Tea model
 type App struct {
@@ -59,7 +64,7 @@ func New(s *store.Store) App {
 	return App{
 		store:      s,
 		keys:       keys,
-		viewState:  ViewList,
+		viewState:  ViewSplash,
 		listView:   listView,
 		detailView: detailView,
 		formView:   formView,
@@ -76,7 +81,10 @@ func New(s *store.Store) App {
 
 // Init initializes the app
 func (a App) Init() tea.Cmd {
-	return nil
+	// Start splash screen timer
+	return tea.Tick(1500*time.Millisecond, func(t time.Time) tea.Msg {
+		return splashDoneMsg{}
+	})
 }
 
 // Update handles messages
@@ -90,7 +98,16 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.formView.SetSize(msg.Width, msg.Height)
 		return a, nil
 
+	case splashDoneMsg:
+		a.viewState = ViewList
+		return a, nil
+
 	case tea.KeyMsg:
+		// Skip splash on any key press
+		if a.viewState == ViewSplash {
+			a.viewState = ViewList
+			return a, nil
+		}
 		return a.handleKey(msg)
 	}
 
@@ -343,6 +360,8 @@ func (a App) View() string {
 	var b strings.Builder
 
 	switch a.viewState {
+	case ViewSplash:
+		b.WriteString(a.renderSplash())
 	case ViewList:
 		b.WriteString(a.listView.View())
 	case ViewDetail:
@@ -420,4 +439,19 @@ func (a App) renderDeleteConfirm() string {
 	))
 
 	return b.String()
+}
+
+func (a App) renderSplash() string {
+	ghost := `
+
+
+         .-.
+        (o o)  GHOSTED
+        | O |  job application tracker
+        |   |  for the perpetually ghosted
+        '~~~'
+
+
+`
+	return SubtleStyle.Render(ghost)
 }
