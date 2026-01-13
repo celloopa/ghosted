@@ -1,0 +1,19 @@
+# Binary
+jobtrack
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude context (local only)
+CLAUDE.md
+
+# Agent working files
+*.agent.json
+.agent/

@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cello_r/jobtrack/schema.json",
+  "title": "Job Application",
+  "description": "Schema for job application entries in jobtrack",
+  "type": "object",
+  "required": ["company", "position"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "UUID, auto-generated when adding via CLI or store"
+    },
+    "company": {
+      "type": "string",
+      "description": "Company name (required)"
+    },
+    "position": {
+      "type": "string",
+      "description": "Job title/position (required)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["applied", "screening", "interview", "offer", "accepted", "rejected", "withdrawn"],
+      "default": "applied",
+      "description": "Current status in the application pipeline"
+    },
+    "date_applied": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date application was submitted (ISO 8601)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes about the application"
+    },
+    "salary_min": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Minimum salary in the range (annual, no currency symbol)"
+    },
+    "salary_max": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum salary in the range (annual, no currency symbol)"
+    },
+    "job_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to the job posting"
+    },
+    "location": {
+      "type": "string",
+      "description": "Job location (e.g., 'San Francisco, CA' or 'Remote')"
+    },
+    "remote": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the position is remote or hybrid"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Name of recruiter or hiring manager"
+    },
+    "contact_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email of recruiter or hiring manager"
+    },
+    "resume_version": {
+      "type": "string",
+      "description": "Which resume version was submitted"
+    },
+    "cover_letter": {
+      "type": "string",
+      "description": "Path or identifier for cover letter used"
+    },
+    "interviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Interview date and time (ISO 8601)"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["phone", "video", "onsite", "technical"],
+            "description": "Type of interview"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes about the interview"
+          },
+          "with_whom": {
+            "type": "string",
+            "description": "Who the interview is with"
+          }
+        }
+      },
+      "description": "List of interviews scheduled or completed"
+    },
+    "next_follow_up": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date for next follow-up action"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Auto-generated creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Auto-updated modification timestamp"
+    }
+  }
+}
