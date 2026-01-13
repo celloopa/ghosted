@@ -29,6 +29,7 @@ type KeyMap struct {
 	Status5 key.Binding
 	Status6 key.Binding
 	Status7 key.Binding
+	Status8 key.Binding
 
 	// Search and filter
 	Search key.Binding
@@ -96,34 +97,38 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("esc", "back"),
 		),
 
-		// Status shortcuts (1-7 for quick status change)
+		// Status shortcuts (1-8 for quick status change)
 		Status1: key.NewBinding(
 			key.WithKeys("1"),
-			key.WithHelp("1", "applied"),
+			key.WithHelp("1", "saved"),
 		),
 		Status2: key.NewBinding(
 			key.WithKeys("2"),
-			key.WithHelp("2", "screening"),
+			key.WithHelp("2", "applied"),
 		),
 		Status3: key.NewBinding(
 			key.WithKeys("3"),
-			key.WithHelp("3", "interview"),
+			key.WithHelp("3", "screening"),
 		),
 		Status4: key.NewBinding(
 			key.WithKeys("4"),
-			key.WithHelp("4", "offer"),
+			key.WithHelp("4", "interview"),
 		),
 		Status5: key.NewBinding(
 			key.WithKeys("5"),
-			key.WithHelp("5", "accepted"),
+			key.WithHelp("5", "offer"),
 		),
 		Status6: key.NewBinding(
 			key.WithKeys("6"),
-			key.WithHelp("6", "rejected"),
+			key.WithHelp("6", "accepted"),
 		),
 		Status7: key.NewBinding(
 			key.WithKeys("7"),
-			key.WithHelp("7", "withdrawn"),
+			key.WithHelp("7", "rejected"),
+		),
+		Status8: key.NewBinding(
+			key.WithKeys("8"),
+			key.WithHelp("8", "withdrawn"),
 		),
 
 		// Search and filter
@@ -177,7 +182,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.Top, k.Bottom},
 		{k.Add, k.Edit, k.Delete, k.Enter},
 		{k.Status1, k.Status2, k.Status3, k.Status4},
-		{k.Status5, k.Status6, k.Status7},
+		{k.Status5, k.Status6, k.Status7, k.Status8},
 		{k.Search, k.Filter, k.Clear},
 		{k.Help, k.Quit},
 	}

@@ -20,7 +20,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["applied", "screening", "interview", "offer", "accepted", "rejected", "withdrawn"],
+      "enum": ["saved", "applied", "screening", "interview", "offer", "accepted", "rejected", "withdrawn"],
       "default": "applied",
       "description": "Current status in the application pipeline"
     },

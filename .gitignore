@@ -13,7 +13,11 @@ Thumbs.db
 
 # Claude context (local only)
 CLAUDE.md
+.claude/
 
 # Agent working files
 *.agent.json
 .agent/
+
+# Local files (resumes, cover letters, job postings)
+local/

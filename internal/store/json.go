@@ -37,13 +37,84 @@ func New(path string) (*Store, error) {
 	// Load existing data or create empty file
 	if err := s.load(); err != nil {
 		if os.IsNotExist(err) {
-			s.applications = []model.Application{}
+			s.applications = sampleData()
 			return s, s.save()
 		}
 		return nil, err
 	}
 
+	// Seed with sample data if empty
+	if len(s.applications) == 0 {
+		s.applications = sampleData()
+		return s, s.save()
+	}
+
 	return s, nil
+}
+
+// sampleData returns pre-seeded sample applications for new users
+func sampleData() []model.Application {
+	now := time.Now()
+	weekAgo := now.AddDate(0, 0, -7)
+	threeDAgo := now.AddDate(0, 0, -3)
+
+	return []model.Application{
+		{
+			ID:          "sample-001",
+			Company:     "Acme Corp",
+			Position:    "Software Engineer",
+			Status:      model.StatusInterview,
+			DateApplied: weekAgo,
+			Notes:       "Tech stack: Go, React, PostgreSQL. Team of 5 engineers.",
+			SalaryMin:   130000,
+			SalaryMax:   160000,
+			JobURL:      "https://example.com/jobs/acme-swe",
+			Location:    "San Francisco, CA",
+			Remote:      true,
+			ContactName: "Jane Smith",
+			ContactEmail: "jane@acme.example.com",
+			Interviews: []model.Interview{
+				{
+					Date:     weekAgo.AddDate(0, 0, 5),
+					Type:     "phone",
+					Notes:    "Initial recruiter screen - went well",
+					WithWhom: "Jane Smith (Recruiter)",
+				},
+			},
+			ResumeVersion: "resume-v2.pdf",
+			CreatedAt:     weekAgo,
+			UpdatedAt:     now,
+		},
+		{
+			ID:          "sample-002",
+			Company:     "TechStart Inc",
+			Position:    "Frontend Developer",
+			Status:      model.StatusApplied,
+			DateApplied: threeDAgo,
+			Notes:       "Early-stage startup, Series A. Building developer tools.",
+			SalaryMin:   120000,
+			SalaryMax:   150000,
+			JobURL:      "https://example.com/jobs/techstart-fe",
+			Location:    "Remote",
+			Remote:      true,
+			CreatedAt:   threeDAgo,
+			UpdatedAt:   threeDAgo,
+		},
+		{
+			ID:          "sample-003",
+			Company:     "BigCo Industries",
+			Position:    "Full Stack Engineer",
+			Status:      model.StatusSaved,
+			DateApplied: now,
+			Notes:       "Fortune 500, great benefits. Need to tailor resume for this one.",
+			SalaryMin:   140000,
+			SalaryMax:   180000,
+			Location:    "Seattle, WA",
+			Remote:      false,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+	}
 }
 
 // load reads applications from the JSON file

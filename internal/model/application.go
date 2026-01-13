@@ -6,6 +6,7 @@ import (
 
 // Status constants for the application pipeline
 const (
+	StatusSaved     = "saved"
 	StatusApplied   = "applied"
 	StatusScreening = "screening"
 	StatusInterview = "interview"
@@ -18,6 +19,7 @@ const (
 // AllStatuses returns all valid status values in pipeline order
 func AllStatuses() []string {
 	return []string{
+		StatusSaved,
 		StatusApplied,
 		StatusScreening,
 		StatusInterview,
@@ -31,6 +33,7 @@ func AllStatuses() []string {
 // StatusLabel returns a human-readable label for a status
 func StatusLabel(status string) string {
 	labels := map[string]string{
+		StatusSaved:     "Saved",
 		StatusApplied:   "Applied",
 		StatusScreening: "Screening",
 		StatusInterview: "Interview",

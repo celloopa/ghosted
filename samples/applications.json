@@ -1,0 +1,57 @@
+[
+  {
+    "id": "sample-001",
+    "company": "Acme Corp",
+    "position": "Software Engineer",
+    "status": "interview",
+    "date_applied": "2025-01-10T00:00:00Z",
+    "notes": "Tech stack: Go, React, PostgreSQL. Team of 5 engineers.",
+    "salary_min": 130000,
+    "salary_max": 160000,
+    "job_url": "https://example.com/jobs/acme-swe",
+    "location": "San Francisco, CA",
+    "remote": true,
+    "contact_name": "Jane Smith",
+    "contact_email": "jane@acme.example.com",
+    "interviews": [
+      {
+        "date": "2025-01-15T14:00:00Z",
+        "type": "phone",
+        "notes": "Initial recruiter screen - went well",
+        "with_whom": "Jane Smith (Recruiter)"
+      }
+    ],
+    "resume_version": "resume-v2.pdf",
+    "created_at": "2025-01-10T09:00:00Z",
+    "updated_at": "2025-01-15T15:00:00Z"
+  },
+  {
+    "id": "sample-002",
+    "company": "TechStart Inc",
+    "position": "Frontend Developer",
+    "status": "applied",
+    "date_applied": "2025-01-12T00:00:00Z",
+    "notes": "Early-stage startup, Series A. Building developer tools.",
+    "salary_min": 120000,
+    "salary_max": 150000,
+    "job_url": "https://example.com/jobs/techstart-fe",
+    "location": "Remote",
+    "remote": true,
+    "created_at": "2025-01-12T10:30:00Z",
+    "updated_at": "2025-01-12T10:30:00Z"
+  },
+  {
+    "id": "sample-003",
+    "company": "BigCo Industries",
+    "position": "Full Stack Engineer",
+    "status": "saved",
+    "date_applied": "2025-01-13T00:00:00Z",
+    "notes": "Fortune 500, great benefits. Need to tailor resume for this one.",
+    "salary_min": 140000,
+    "salary_max": 180000,
+    "location": "Seattle, WA",
+    "remote": false,
+    "created_at": "2025-01-13T08:00:00Z",
+    "updated_at": "2025-01-13T08:00:00Z"
+  }
+]

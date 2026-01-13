@@ -21,6 +21,7 @@ var (
 
 // Status colors
 var statusColors = map[string]lipgloss.Color{
+	model.StatusSaved:     lipgloss.Color("#B8B8B8"),
 	model.StatusApplied:   lipgloss.Color("#4ECDC4"),
 	model.StatusScreening: lipgloss.Color("#FFE66D"),
 	model.StatusInterview: lipgloss.Color("#A8E6CF"),

@@ -120,18 +120,20 @@ func (l *ListView) HandleKey(msg tea.KeyMsg) (handled bool, action string) {
 	case key.Matches(msg, l.keys.Filter):
 		return true, "filter"
 	case key.Matches(msg, l.keys.Status1):
-		return true, "status:applied"
+		return true, "status:saved"
 	case key.Matches(msg, l.keys.Status2):
-		return true, "status:screening"
+		return true, "status:applied"
 	case key.Matches(msg, l.keys.Status3):
-		return true, "status:interview"
+		return true, "status:screening"
 	case key.Matches(msg, l.keys.Status4):
-		return true, "status:offer"
+		return true, "status:interview"
 	case key.Matches(msg, l.keys.Status5):
-		return true, "status:accepted"
+		return true, "status:offer"
 	case key.Matches(msg, l.keys.Status6):
-		return true, "status:rejected"
+		return true, "status:accepted"
 	case key.Matches(msg, l.keys.Status7):
+		return true, "status:rejected"
+	case key.Matches(msg, l.keys.Status8):
 		return true, "status:withdrawn"
 	case key.Matches(msg, l.keys.Quit):
 		return true, "quit"

@@ -57,18 +57,20 @@ func (d *DetailView) HandleKey(msg tea.KeyMsg) (handled bool, action string) {
 		d.scrollY++
 		return true, ""
 	case key.Matches(msg, d.keys.Status1):
-		return true, "status:applied"
+		return true, "status:saved"
 	case key.Matches(msg, d.keys.Status2):
-		return true, "status:screening"
+		return true, "status:applied"
 	case key.Matches(msg, d.keys.Status3):
-		return true, "status:interview"
+		return true, "status:screening"
 	case key.Matches(msg, d.keys.Status4):
-		return true, "status:offer"
+		return true, "status:interview"
 	case key.Matches(msg, d.keys.Status5):
-		return true, "status:accepted"
+		return true, "status:offer"
 	case key.Matches(msg, d.keys.Status6):
-		return true, "status:rejected"
+		return true, "status:accepted"
 	case key.Matches(msg, d.keys.Status7):
+		return true, "status:rejected"
+	case key.Matches(msg, d.keys.Status8):
 		return true, "status:withdrawn"
 	case key.Matches(msg, d.keys.Quit):
 		return true, "quit"
