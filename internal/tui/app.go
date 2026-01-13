@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // ViewState represents the current view
@@ -29,14 +30,15 @@ type splashDoneMsg struct{}
 
 // App is the main Bubble Tea model
 type App struct {
-	store      *store.Store
-	keys       KeyMap
-	width      int
-	height     int
-	viewState  ViewState
-	prevState  ViewState
-	err        error
-	statusMsg  string
+	store        *store.Store
+	keys         KeyMap
+	width        int
+	height       int
+	contentWidth int
+	viewState    ViewState
+	prevState    ViewState
+	err          error
+	statusMsg    string
 
 	// Views
 	listView   ListView
@@ -93,9 +95,17 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		a.width = msg.Width
 		a.height = msg.Height
-		a.listView.SetSize(msg.Width, msg.Height)
-		a.detailView.SetSize(msg.Width, msg.Height)
-		a.formView.SetSize(msg.Width, msg.Height)
+		// Calculate content width (responsive with max)
+		a.contentWidth = msg.Width - 4 // Account for padding
+		if a.contentWidth > MaxContentWidth {
+			a.contentWidth = MaxContentWidth
+		}
+		if a.contentWidth < MinContentWidth {
+			a.contentWidth = MinContentWidth
+		}
+		a.listView.SetSize(a.contentWidth, msg.Height)
+		a.detailView.SetSize(a.contentWidth, msg.Height)
+		a.formView.SetSize(a.contentWidth, msg.Height)
 		return a, nil
 
 	case splashDoneMsg:
@@ -386,7 +396,16 @@ func (a App) View() string {
 		b.WriteString(ErrorStyle.Render(a.err.Error()))
 	}
 
-	return b.String()
+	content := b.String()
+
+	// Center content both horizontally and vertically
+	return lipgloss.Place(
+		a.width,
+		a.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		content,
+	)
 }
 
 func (a App) renderFilterView() string {

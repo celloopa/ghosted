@@ -6,6 +6,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Layout constants
+const (
+	MaxContentWidth = 100
+	MinContentWidth = 60
+)
+
 // Colors
 var (
 	colorPrimary   = lipgloss.Color("#7D56F4")

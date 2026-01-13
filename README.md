@@ -23,16 +23,22 @@ Built with Go and [Charm](https://charm.sh) libraries.
 
 ## Installation
 
-### From Source
+### From Source (Recommended)
 
 ```bash
 git clone https://github.com/celloopa/ghosted.git
 cd ghosted
-go build -o ghosted
-./ghosted
+make install
 ```
 
-### Go Install
+This installs `ghosted` to your Go bin directory (`~/go/bin` by default).
+
+Make sure it's in your PATH:
+```bash
+export PATH="$HOME/go/bin:$PATH"
+```
+
+### Go Install (Latest Release)
 
 ```bash
 go install github.com/celloopa/ghosted@latest
@@ -186,7 +192,9 @@ This directory is gitignored by default.
 ### Building
 
 ```bash
-go build -o ghosted
+make build    # Build binary locally
+make install  # Build and install to ~/go/bin
+make clean    # Remove local binary
 ```
 
 ### Dependencies
