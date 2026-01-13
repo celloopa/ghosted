@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"jobtrack/internal/model"
-	"jobtrack/internal/store"
+	"github.com/celloopa/ghosted/internal/model"
+	"github.com/celloopa/ghosted/internal/store"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"

@@ -1,4 +1,4 @@
-module jobtrack
+module github.com/celloopa/ghosted
 
 go 1.25.5
 

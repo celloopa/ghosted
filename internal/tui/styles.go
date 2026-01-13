@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"jobtrack/internal/model"
+	"github.com/celloopa/ghosted/internal/model"
 
 	"github.com/charmbracelet/lipgloss"
 )

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"jobtrack/internal/model"
+	"github.com/celloopa/ghosted/internal/model"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"

@@ -26,7 +26,7 @@ Built with Go and [Charm](https://charm.sh) libraries.
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/ghosted.git
+git clone https://github.com/celloopa/ghosted.git
 cd ghosted
 go build -o ghosted
 ./ghosted
@@ -35,7 +35,7 @@ go build -o ghosted
 ### Go Install
 
 ```bash
-go install github.com/yourusername/ghosted@latest
+go install github.com/celloopa/ghosted@latest
 ```
 
 ## Usage

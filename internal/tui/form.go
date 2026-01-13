@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"jobtrack/internal/model"
+	"github.com/celloopa/ghosted/internal/model"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"

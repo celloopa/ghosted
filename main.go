@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"jobtrack/internal/model"
-	"jobtrack/internal/store"
-	"jobtrack/internal/tui"
+	"github.com/celloopa/ghosted/internal/model"
+	"github.com/celloopa/ghosted/internal/store"
+	"github.com/celloopa/ghosted/internal/tui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
