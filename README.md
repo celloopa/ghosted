@@ -12,6 +12,23 @@ A terminal-based job application tracker for those of us who know the void all t
 
 Built with Go and [Charm](https://charm.sh) libraries.
 
+## Demo
+
+### TUI Overview
+Navigate, search, filter, and manage your job applications from the terminal.
+
+[Watch: TUI Overview](public/demos/ghosted-intro.webm)
+
+### AI Agent Integration
+Drop a job posting into `local/postings/` and let an AI agent (like Claude Code) extract the details and add it to your tracker.
+
+[Watch: Agent Integration](public/demos/ghosted-agent.webm)
+
+### Edit Agent-Created Entries
+Review and update the status of AI-created entries directly from the TUI.
+
+[Watch: Editing Entries](public/demos/ghosted-end.webm)
+
 ## Features
 
 - **Interactive TUI** - Full keyboard-driven interface with vim-style navigation
