@@ -17,19 +17,17 @@ Built with Go and [Charm](https://charm.sh) libraries.
 ### TUI Overview
 Navigate, search, filter, and manage your job applications from the terminal.
 
-[ghosted-intro.webm](https://github.com/user-attachments/assets/03f527f0-c765-4c6b-b15e-bdb781d40719)
-
+![TUI Overview](public/demos/ghosted-intro.gif)
 
 ### AI Agent Integration
 Drop a job posting into `local/postings/` and let an AI agent (like Claude Code) extract the details and add it to your tracker.
-[ghosted-agent.webm](https://github.com/user-attachments/assets/2688cc0c-6cf8-48de-a311-6aa189e2f20a)
 
+![Agent Integration](public/demos/ghosted-agent.gif)
 
 ### Edit Agent-Created Entries
 Review and update the status of AI-created entries directly from the TUI.
-[ghosted-end.webm](https://github.com/user-attachments/assets/82be7e8f-8d46-41ad-bab4-efc3a7b3ac71)
 
-
+![Editing Entries](public/demos/ghosted-end.gif)
 
 ## Features
 
