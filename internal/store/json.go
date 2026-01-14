@@ -64,7 +64,7 @@ func sampleData() []model.Application {
 			Company:     "Acme Corp",
 			Position:    "Software Engineer",
 			Status:      model.StatusInterview,
-			DateApplied: weekAgo,
+			DateApplied: &weekAgo,
 			Notes:       "Tech stack: Go, React, PostgreSQL. Team of 5 engineers.",
 			SalaryMin:   130000,
 			SalaryMax:   160000,
@@ -90,7 +90,7 @@ func sampleData() []model.Application {
 			Company:     "TechStart Inc",
 			Position:    "Frontend Developer",
 			Status:      model.StatusApplied,
-			DateApplied: threeDAgo,
+			DateApplied: &threeDAgo,
 			Notes:       "Early-stage startup, Series A. Building developer tools.",
 			SalaryMin:   120000,
 			SalaryMax:   150000,
@@ -105,7 +105,7 @@ func sampleData() []model.Application {
 			Company:     "BigCo Industries",
 			Position:    "Full Stack Engineer",
 			Status:      model.StatusSaved,
-			DateApplied: now,
+			DateApplied: nil, // Saved applications don't need a date
 			Notes:       "Fortune 500, great benefits. Need to tailor resume for this one.",
 			SalaryMin:   140000,
 			SalaryMax:   180000,
@@ -150,8 +150,9 @@ func (s *Store) Add(app model.Application) (model.Application, error) {
 	if app.Status == "" {
 		app.Status = model.StatusApplied
 	}
-	if app.DateApplied.IsZero() {
-		app.DateApplied = time.Now()
+	if app.DateApplied == nil && app.Status != model.StatusSaved {
+		now := time.Now()
+		app.DateApplied = &now
 	}
 
 	s.applications = append(s.applications, app)
@@ -192,13 +193,28 @@ func (s *Store) GetByID(id string) (model.Application, error) {
 	return model.Application{}, ErrNotFound
 }
 
-// List returns all applications, sorted by date applied (newest first)
+// List returns all applications, sorted by status priority (later stages first), then by date (newest first)
 func (s *Store) List() []model.Application {
 	apps := make([]model.Application, len(s.applications))
 	copy(apps, s.applications)
 
 	sort.Slice(apps, func(i, j int) bool {
-		return apps[i].DateApplied.After(apps[j].DateApplied)
+		// Primary sort: status priority (higher first)
+		pi, pj := model.StatusPriority(apps[i].Status), model.StatusPriority(apps[j].Status)
+		if pi != pj {
+			return pi > pj
+		}
+		// Secondary sort: date (newest first, nil dates last)
+		if apps[i].DateApplied == nil && apps[j].DateApplied == nil {
+			return false
+		}
+		if apps[i].DateApplied == nil {
+			return false
+		}
+		if apps[j].DateApplied == nil {
+			return true
+		}
+		return apps[i].DateApplied.After(*apps[j].DateApplied)
 	})
 
 	return apps
@@ -213,8 +229,18 @@ func (s *Store) FilterByStatus(status string) []model.Application {
 		}
 	}
 
+	// Sort by date within same status (newest first, nil dates last)
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].DateApplied.After(result[j].DateApplied)
+		if result[i].DateApplied == nil && result[j].DateApplied == nil {
+			return false
+		}
+		if result[i].DateApplied == nil {
+			return false
+		}
+		if result[j].DateApplied == nil {
+			return true
+		}
+		return result[i].DateApplied.After(*result[j].DateApplied)
 	})
 
 	return result
@@ -232,8 +258,22 @@ func (s *Store) Search(query string) []model.Application {
 		}
 	}
 
+	// Sort by status priority (later stages first), then by date (newest first)
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].DateApplied.After(result[j].DateApplied)
+		pi, pj := model.StatusPriority(result[i].Status), model.StatusPriority(result[j].Status)
+		if pi != pj {
+			return pi > pj
+		}
+		if result[i].DateApplied == nil && result[j].DateApplied == nil {
+			return false
+		}
+		if result[i].DateApplied == nil {
+			return false
+		}
+		if result[j].DateApplied == nil {
+			return true
+		}
+		return result[i].DateApplied.After(*result[j].DateApplied)
 	})
 
 	return result
@@ -260,5 +300,10 @@ func (s *Store) UpdateStatus(id string, status string) error {
 		return err
 	}
 	app.Status = status
+	// Auto-set date when transitioning to non-saved status
+	if app.DateApplied == nil && status != model.StatusSaved {
+		now := time.Now()
+		app.DateApplied = &now
+	}
 	return s.Update(app)
 }

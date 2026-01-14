@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/celloopa/ghosted/internal/model"
@@ -43,6 +45,8 @@ func main() {
 		cmdUpdate(s, os.Args[2:])
 	case "delete":
 		cmdDelete(s, os.Args[2:])
+	case "upgrade":
+		cmdUpgrade()
 	case "help", "--help", "-h":
 		printHelp()
 	default:
@@ -79,6 +83,7 @@ Commands:
   get <id> [--json]     Get application by ID
   update <id> --json '<json>'  Update application fields
   delete <id>           Delete an application
+  upgrade               Update ghosted to the latest version
   help                  Show this help
 
 Environment:
@@ -109,9 +114,7 @@ func cmdAdd(s *store.Store, args []string) {
 	if app.Status == "" {
 		app.Status = model.StatusApplied
 	}
-	if app.DateApplied.IsZero() {
-		app.DateApplied = time.Now()
-	}
+	// DateApplied defaults are handled by the store based on status
 
 	// Validate required fields
 	if app.Company == "" {
@@ -157,12 +160,16 @@ func cmdList(s *store.Store, args []string) {
 			return
 		}
 		for _, app := range apps {
+			date := "—"
+			if app.DateApplied != nil {
+				date = app.DateApplied.Format("2006-01-02")
+			}
 			fmt.Printf("[%s] %s @ %s - %s (%s)\n",
 				app.ID[:8],
 				app.Position,
 				app.Company,
 				model.StatusLabel(app.Status),
-				app.DateApplied.Format("2006-01-02"),
+				date,
 			)
 		}
 	}
@@ -211,7 +218,11 @@ func cmdGet(s *store.Store, args []string) {
 		fmt.Printf("Company:  %s\n", app.Company)
 		fmt.Printf("Position: %s\n", app.Position)
 		fmt.Printf("Status:   %s\n", model.StatusLabel(app.Status))
-		fmt.Printf("Applied:  %s\n", app.DateApplied.Format("2006-01-02"))
+		if app.DateApplied != nil {
+			fmt.Printf("Applied:  %s\n", app.DateApplied.Format("2006-01-02"))
+		} else {
+			fmt.Printf("Applied:  Not sent\n")
+		}
 		if app.Location != "" {
 			fmt.Printf("Location: %s\n", app.Location)
 		}
@@ -275,6 +286,11 @@ func cmdUpdate(s *store.Store, args []string) {
 	}
 	if v, ok := updates["status"].(string); ok {
 		app.Status = v
+		// Auto-set date when transitioning to non-saved status
+		if app.DateApplied == nil && v != model.StatusSaved {
+			now := time.Now()
+			app.DateApplied = &now
+		}
 	}
 	if v, ok := updates["notes"].(string); ok {
 		app.Notes = v
@@ -308,7 +324,8 @@ func cmdUpdate(s *store.Store, args []string) {
 	}
 	if v, ok := updates["date_applied"].(string); ok {
 		if t, err := time.Parse("2006-01-02", v); err == nil {
-			app.DateApplied = t
+			parsedDate := t
+			app.DateApplied = &parsedDate
 		}
 	}
 
@@ -373,4 +390,40 @@ func getDataPath() string {
 	}
 
 	return filepath.Join(home, ".local", "share", "ghosted", "applications.json")
+}
+
+// cmdUpgrade updates ghosted to the latest version
+func cmdUpgrade() {
+	fmt.Println("Upgrading ghosted to latest version...")
+
+	// Check if go is available
+	if _, err := exec.LookPath("go"); err != nil {
+		fmt.Fprintln(os.Stderr, "Error: Go is not installed or not in PATH")
+		fmt.Fprintln(os.Stderr, "Install Go from https://go.dev/dl/ or use your package manager")
+		os.Exit(1)
+	}
+
+	// Run go install to get the latest version
+	cmd := exec.Command("go", "install", "github.com/celloopa/ghosted@latest")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error upgrading: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Successfully upgraded ghosted!")
+
+	// Show where it was installed
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		home, _ := os.UserHomeDir()
+		gopath = filepath.Join(home, "go")
+	}
+	binPath := filepath.Join(gopath, "bin", "ghosted")
+	if runtime.GOOS == "windows" {
+		binPath += ".exe"
+	}
+	fmt.Printf("Installed to: %s\n", binPath)
 }

@@ -316,7 +316,10 @@ func (l *ListView) renderRow(index int, selected bool) string {
 	company := truncate(app.Company, companyW)
 	position := truncate(app.Position, positionW)
 	status := truncate(model.StatusLabel(app.Status), statusW)
-	date := app.DateApplied.Format("2006-01-02")
+	date := "—"
+	if app.DateApplied != nil {
+		date = app.DateApplied.Format("2006-01-02")
+	}
 
 	// Status with color
 	statusStyle := StatusBadgeStyle(app.Status)

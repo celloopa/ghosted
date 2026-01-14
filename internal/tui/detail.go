@@ -104,7 +104,11 @@ func (d *DetailView) View() string {
 	// Basic Info Section
 	b.WriteString(SectionStyle.Render("Basic Information"))
 	b.WriteString("\n")
-	b.WriteString(d.renderField("Applied", app.DateApplied.Format("January 2, 2006")))
+	if app.DateApplied != nil {
+		b.WriteString(d.renderField("Applied", app.DateApplied.Format("January 2, 2006")))
+	} else {
+		b.WriteString(d.renderField("Applied", "Not sent"))
+	}
 	if app.Location != "" {
 		loc := app.Location
 		if app.Remote {

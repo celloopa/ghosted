@@ -48,6 +48,21 @@ func StatusLabel(status string) string {
 	return status
 }
 
+// StatusPriority returns sort priority for a status (higher = more important)
+func StatusPriority(status string) int {
+	priorities := map[string]int{
+		StatusAccepted:  8,
+		StatusOffer:     7,
+		StatusInterview: 6,
+		StatusScreening: 5,
+		StatusApplied:   4,
+		StatusSaved:     3,
+		StatusRejected:  2,
+		StatusWithdrawn: 1,
+	}
+	return priorities[status]
+}
+
 // Interview represents a scheduled or completed interview
 type Interview struct {
 	Date     time.Time `json:"date"`
@@ -62,7 +77,7 @@ type Application struct {
 	Company     string    `json:"company"`
 	Position    string    `json:"position"`
 	Status      string    `json:"status"`
-	DateApplied time.Time `json:"date_applied"`
+	DateApplied *time.Time `json:"date_applied,omitempty"`
 	Notes       string    `json:"notes,omitempty"`
 
 	// Extended info

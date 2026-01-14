@@ -136,7 +136,9 @@ func (f *FormView) SetApplication(app *model.Application) {
 
 	f.inputs[FieldCompany].SetValue(app.Company)
 	f.inputs[FieldPosition].SetValue(app.Position)
-	f.inputs[FieldDateApplied].SetValue(app.DateApplied.Format("2006-01-02"))
+	if app.DateApplied != nil {
+		f.inputs[FieldDateApplied].SetValue(app.DateApplied.Format("2006-01-02"))
+	}
 	f.inputs[FieldLocation].SetValue(app.Location)
 	f.remoteToggle = app.Remote
 	if app.SalaryMin > 0 {
@@ -334,11 +336,14 @@ func (f *FormView) GetApplication() model.Application {
 	dateStr := strings.TrimSpace(f.inputs[FieldDateApplied].Value())
 	if dateStr != "" {
 		if t, err := time.Parse("2006-01-02", dateStr); err == nil {
-			app.DateApplied = t
+			parsedDate := t
+			app.DateApplied = &parsedDate
 		}
 	}
-	if app.DateApplied.IsZero() {
-		app.DateApplied = time.Now()
+	// Auto-set date to today if not "saved" and no date provided
+	if app.DateApplied == nil && app.Status != model.StatusSaved {
+		now := time.Now()
+		app.DateApplied = &now
 	}
 
 	// Parse salary
