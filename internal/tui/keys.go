@@ -36,6 +36,12 @@ type KeyMap struct {
 	Filter key.Binding
 	Clear  key.Binding
 
+	// URL input for job posting fetch
+	URLInput key.Binding
+
+	// Open documents folder
+	OpenFolder key.Binding
+
 	// General
 	Help key.Binding
 	Quit key.Binding
@@ -145,6 +151,18 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("c", "clear filter"),
 		),
 
+		// URL input for job posting fetch
+		URLInput: key.NewBinding(
+			key.WithKeys("u"),
+			key.WithHelp("u", "fetch URL"),
+		),
+
+		// Open documents folder
+		OpenFolder: key.NewBinding(
+			key.WithKeys("o"),
+			key.WithHelp("o", "open folder"),
+		),
+
 		// General
 		Help: key.NewBinding(
 			key.WithKeys("?"),
@@ -173,7 +191,7 @@ func DefaultKeyMap() KeyMap {
 
 // ShortHelp returns keybindings to show in the mini help view
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Add, k.Enter, k.Filter, k.Search, k.Help, k.Quit}
+	return []key.Binding{k.Add, k.URLInput, k.Enter, k.Filter, k.Search, k.Help, k.Quit}
 }
 
 // FullHelp returns keybindings for the expanded help view (excludes status keys shown separately)
@@ -182,6 +200,6 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.Top, k.Bottom},
 		{k.Add, k.Edit, k.Delete, k.Enter},
 		{k.Search, k.Filter, k.Clear},
-		{k.Help, k.Quit},
+		{k.URLInput, k.Help, k.Quit},
 	}
 }

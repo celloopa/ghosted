@@ -84,6 +84,8 @@ ghosted
 | `/` | Search |
 | `f` | Filter by status |
 | `c` | Clear filters |
+| `u` | Fetch URL (launch AI workflow) |
+| `o` | Open documents folder (detail view) |
 | `?` | Toggle help |
 | `q` | Quit |
 
@@ -120,6 +122,10 @@ ghosted delete abc123
 # Fetch job posting from URL
 ghosted fetch https://jobs.lever.co/company/job-id
 ghosted fetch --output acme-swe.md https://example.com/job
+
+# Compile .typ files to PDF
+ghosted compile abc123                           # By app ID
+ghosted compile local/applications/swe/acme/    # By directory
 
 # Help
 ghosted help
@@ -180,6 +186,7 @@ rm ~/.local/share/ghosted/applications.json
   "contact_email": "string",
   "resume_version": "string",
   "cover_letter": "string",
+  "documents_dir": "local/applications/{job-type}/{company}/",
   "notes": "string",
   "interviews": [
     {

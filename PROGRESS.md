@@ -1,6 +1,6 @@
 # Multi-Agent Document Generation Pipeline - Progress Tracker
 
-> **Last Updated:** 2026-01-16 (agents completed)
+> **Last Updated:** 2026-01-16 (Added compile command and open folder feature)
 > **Project:** ghosted
 > **Kanban Project ID:** `b666852b-0ef9-4ee0-8d91-a7f341697897`
 > **GitHub Repo:** `celloopa/ghosted`
@@ -46,6 +46,7 @@ When a user drops a job posting into `local/postings/`, agents will:
 |--------|------|----|-------|
 | `[x]` | Implement Tracker Integration | `1dd2fb3f-6555-4baf-b7bb-d77056c1968d` | ✅ `tracker.go` + 23 tests |
 | `[x]` | Add `ghosted apply` CLI command | `b9615c5d-fd52-418c-89da-4bec8c724f83` | ✅ Implemented with --dry-run, --auto-approve |
+| `[x]` | Add TUI URL input dialog | `b1fb39cb-634a-46e3-8f28-9815036dffaf` | ✅ Press 'u' to fetch URL and launch Claude |
 | `[ ]` | Add watch mode for automatic processing | `2cdc1317-ddc0-408b-ab3d-b6fb92e2887b` | Nice-to-have: monitor folder |
 
 ### Phase 4: Agent Automation & Training Data (After Phase 3)
@@ -323,21 +324,103 @@ Replace Claude API calls with local model inference:
    - Usage: `ghosted fetch https://jobs.lever.co/company/123`
 
 ### What's Next
-1. **Implement `ghosted apply <file>`** - This will:
-   - Accept a posting file from `local/postings/`
-   - Run the full pipeline (Parser → Resume → Cover → Reviewer → Tracker)
-   - Invoke Claude Code for AI-powered document generation
-   - Wire up all the agents we built
+1. **Phase 4 improvements** - Now that the pipeline is complete:
+   - Add `--non-interactive` flag to `ghosted apply` for agent automation
+   - Persist intermediate outputs (parsed.json, review.json)
+   - Add session logging (optional, privacy-first)
 
-2. **Test the full workflow**:
+2. **Test the full TUI workflow**:
    ```bash
-   ghosted fetch https://jobs.lever.co/some-company/123
-   ghosted apply local/postings/some-company-swe-posting.md
+   ./ghosted           # Launch TUI
+   # Press 'u' to open URL input dialog
+   # Paste a job posting URL and press Enter
+   # Claude Code launches with full context
    ```
 
 ---
 
 ## Completed Work Log
+
+### 2026-01-16: Compile Command and Open Folder Feature
+
+**New CLI command: `ghosted compile`**
+- Compiles `.typ` files to PDFs with descriptive names
+- Auto-updates tracker with PDF filenames
+- Usage: `ghosted compile <app-id>` or `ghosted compile <documents-dir>`
+- Naming: `{company}-{position}-resume.pdf`, `{company}-{position}-cover.pdf`
+
+**New field: `documents_dir`**
+- Added to Application model for tracking document folder location
+- Enables the "open folder" TUI feature
+- Set via: `ghosted add --json '{"documents_dir":"local/applications/swe/company/"}'`
+- Updated via: `ghosted update <id> --json '{"documents_dir":"..."}'`
+
+**New TUI keybinding: `o` (open folder)**
+- Press `o` in detail view to open documents folder in system file manager
+- Cross-platform: macOS (open), Windows (explorer), Linux (xdg-open)
+- Shows "No documents folder set" if `documents_dir` is empty
+
+**Files modified:**
+- `main.go` - Added `cmdCompile()` function with Typst compilation
+- `internal/model/application.go` - Added `DocumentsDir` field
+- `internal/tui/app.go` - Added `openFolder()` function and handler
+- `internal/tui/detail.go` - Added folder display and `o` keybinding
+- `internal/tui/keys.go` - Added `OpenFolder` key binding
+- `internal/agent/prompts/tracker.md` - Updated workflow to use compile command
+- `CLAUDE.md` - Documented new field and keybindings
+
+**Agent workflow updated:**
+```bash
+# 1. Add to tracker with documents_dir
+ghosted add --json '{"company":"Acme","position":"SWE","documents_dir":"local/applications/swe/acme/"}'
+
+# 2. Compile .typ to PDF (required step)
+ghosted compile local/applications/swe/acme/
+```
+
+---
+
+### 2026-01-16: TUI URL Input Dialog for Agent Pipeline
+
+**Files created/modified:**
+- `internal/tui/urlinput.go` - New URLInputView component with:
+  - Text input for job posting URLs
+  - URL validation (http/https prefix)
+  - Centered dialog overlay
+  - Usage hints for supported job boards
+  - "What happens next" workflow description
+- `internal/tui/app.go` - Added:
+  - `ViewURLInput` view state
+  - `urlInputView` field on App struct
+  - `fetchResultMsg` and `claudeLaunchedMsg` message types
+  - `handleURLInputKey()` - Key handling for URL input view
+  - `fetchPosting()` - Async fetch of job posting URL
+  - `launchClaude()` - Launch Claude Code with agent context via `tea.ExecProcess`
+- `internal/tui/keys.go` - Added:
+  - `URLInput` key binding (`u` key)
+  - Updated `ShortHelp()` and `FullHelp()` to include new binding
+- `internal/tui/list.go` - Added:
+  - Handler for `urlinput` action
+  - "AI Agent" section in help dialog with `u` keybinding
+
+**User workflow:**
+1. Press `u` in list view
+2. URL input dialog appears (centered overlay)
+3. Paste job posting URL and press Enter
+4. ghosted fetches the posting to `local/postings/`
+5. Claude Code is launched with full context:
+   - CV data from `local/cv.json`
+   - Posting list from `local/postings/`
+   - Prompt templates from `internal/agent/prompts/`
+   - Instructions to run the agent pipeline
+
+**Technical notes:**
+- Uses `tea.ExecProcess` for proper terminal handoff to Claude
+- Fetches context via `ghosted context` command
+- Builds full prompt with workflow instructions for Claude
+- Returns to TUI after Claude exits
+
+---
 
 ### 2026-01-16: All Core Agents Implemented (Tasks 1-4)
 

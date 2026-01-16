@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Compile Command** - New `ghosted compile` command to compile `.typ` files to PDFs with descriptive names and auto-update tracker
+  ```bash
+  ghosted compile abc123                           # By app ID
+  ghosted compile local/applications/swe/acme/    # By directory
+  ```
+
+- **Open Folder Feature** - Press `o` in TUI detail view to open documents folder in system file manager (cross-platform: macOS, Windows, Linux)
+
+- **Documents Directory Tracking** - New `documents_dir` field in Application model to track location of generated documents
+
+- **TUI URL Input Dialog** ([#10](https://github.com/celloopa/ghosted/issues/10))
+  - Press `u` in list view to open URL input dialog
+  - Fetches job posting and launches Claude Code with agent context
+  - Supports Lever, Greenhouse, Workday, LinkedIn, Ashby, and generic URLs
+
 - **Fetch Command** ([#14](https://github.com/celloopa/ghosted/pull/14))
   - New `ghosted fetch <url>` command to fetch job postings from URLs
   - Support for multiple job boards: Lever, Greenhouse, Workday, LinkedIn, Ashby

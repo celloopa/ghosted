@@ -48,6 +48,8 @@ func (d *DetailView) HandleKey(msg tea.KeyMsg) (handled bool, action string) {
 		return true, "edit"
 	case key.Matches(msg, d.keys.Delete):
 		return true, "delete"
+	case key.Matches(msg, d.keys.OpenFolder):
+		return true, "openfolder"
 	case key.Matches(msg, d.keys.Up):
 		if d.scrollY > 0 {
 			d.scrollY--
@@ -139,10 +141,13 @@ func (d *DetailView) View() string {
 	}
 
 	// Documents
-	if app.ResumeVersion != "" || app.CoverLetter != "" {
+	if app.ResumeVersion != "" || app.CoverLetter != "" || app.DocumentsDir != "" {
 		b.WriteString("\n")
 		b.WriteString(SectionStyle.Render("Documents"))
 		b.WriteString("\n")
+		if app.DocumentsDir != "" {
+			b.WriteString(d.renderField("Folder", app.DocumentsDir))
+		}
 		if app.ResumeVersion != "" {
 			b.WriteString(d.renderField("Resume", app.ResumeVersion))
 		}
@@ -223,13 +228,15 @@ func (d *DetailView) renderField(label, value string) string {
 }
 
 func (d *DetailView) renderHelp() string {
-	return fmt.Sprintf("%s %s  %s %s  %s %s  %s %s",
+	return fmt.Sprintf("%s %s  %s %s  %s %s  %s %s  %s %s",
 		HelpKeyStyle.Render("e"),
 		HelpDescStyle.Render("edit"),
 		HelpKeyStyle.Render("d"),
 		HelpDescStyle.Render("delete"),
-		HelpKeyStyle.Render("1-7"),
-		HelpDescStyle.Render("change status"),
+		HelpKeyStyle.Render("o"),
+		HelpDescStyle.Render("open folder"),
+		HelpKeyStyle.Render("1-8"),
+		HelpDescStyle.Render("status"),
 		HelpKeyStyle.Render("esc"),
 		HelpDescStyle.Render("back"),
 	)

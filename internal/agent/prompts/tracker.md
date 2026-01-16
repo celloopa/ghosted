@@ -33,15 +33,25 @@ Applications are organized by role category:
 - `ux-design/` - UX/UI Designer roles
 - `product-design/` - Product Designer roles
 
+### Document Compilation
+
+After generating .typ files, **always run the compile command** to create PDFs with descriptive names:
+
+```bash
+ghosted compile local/applications/{job-type}/{company}/
+```
+
+This will:
+1. Compile `resume.typ` → `{company}-{position}-resume.pdf`
+2. Compile `cover-letter.typ` → `{company}-{position}-cover.pdf`
+3. Update the tracker entry with the PDF filenames
+
 ### Document Path Mapping
 
-When adding to tracker, use the application folder path:
-- `resume_version`: `"applications/{job-type}/{company}/resume.pdf"`
-- `cover_letter`: `"applications/{job-type}/{company}/cover-letter.pdf"`
-
-Examples:
-- `"applications/fe-dev/figma-ec_swe/resume.pdf"`
-- `"applications/swe/twitch-swe/cover-letter.pdf"`
+When adding to tracker, include `documents_dir` to enable the "open folder" feature:
+- `documents_dir`: `"local/applications/{job-type}/{company}/"`
+- `resume_version`: Set automatically by `ghosted compile`
+- `cover_letter`: Set automatically by `ghosted compile`
 
 ## Input
 
@@ -52,10 +62,11 @@ You will receive:
 
 ## Output Format
 
-Generate a ghosted CLI command to add the application:
+Generate ghosted CLI commands to add the application and compile documents:
 
 ```bash
-./ghosted add --json '{
+# 1. Add to tracker with documents_dir
+ghosted add --json '{
   "company": "Company Name",
   "position": "Job Title",
   "status": "applied",
@@ -64,10 +75,12 @@ Generate a ghosted CLI command to add the application:
   "salary_min": 150000,
   "salary_max": 200000,
   "job_url": "https://example.com/job",
-  "resume_version": "resume-company.pdf",
-  "cover_letter": "cover-letter-company.pdf",
+  "documents_dir": "local/applications/swe/company-name/",
   "notes": "Tech stack: React, TypeScript, Node.js. Review score: 85/100."
 }'
+
+# 2. Compile .typ files to PDFs (auto-updates resume_version and cover_letter)
+ghosted compile local/applications/swe/company-name/
 ```
 
 ## Field Mapping
@@ -82,8 +95,9 @@ Generate a ghosted CLI command to add the application:
 | parsed.salary_min | salary_min |
 | parsed.salary_max | salary_max |
 | parsed.job_url | job_url |
-| documents.resume_pdf | resume_version |
-| documents.cover_pdf | cover_letter |
+| application folder path | documents_dir |
+| (set by compile) | resume_version |
+| (set by compile) | cover_letter |
 | (generated) | notes |
 
 ## Notes Generation
@@ -124,12 +138,17 @@ After creating the tracker entry, the posting has already been copied to the app
 Return a bash script with the following commands:
 
 ```bash
-# Add to tracker
-./ghosted add --json '{ ... }'
+# 1. Add to tracker (with documents_dir for "open folder" feature)
+ghosted add --json '{ ... }'
 
-# Organize files (optional)
+# 2. Compile .typ to PDF with descriptive names (REQUIRED)
+ghosted compile local/applications/{job-type}/{company}/
+
+# 3. Organize files (optional)
 mv "local/postings/original.md" "local/postings/processed/"
 ```
+
+**Important:** Always run `ghosted compile` after adding. This creates descriptive PDF names like `figma-early-career-resume.pdf` instead of `resume.pdf`.
 
 ## Validation
 

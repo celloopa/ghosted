@@ -2,9 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/celloopa/ghosted/internal/fetch"
 	"github.com/celloopa/ghosted/internal/model"
 	"github.com/celloopa/ghosted/internal/store"
 
@@ -23,10 +27,24 @@ const (
 	ViewForm
 	ViewFilter
 	ViewConfirmDelete
+	ViewURLInput
 )
 
 // splashDoneMsg signals the splash screen is done
 type splashDoneMsg struct{}
+
+// fetchResultMsg contains the result of fetching a job posting URL
+type fetchResultMsg struct {
+	outputPath string
+	company    string
+	position   string
+	err        error
+}
+
+// claudeLaunchedMsg signals that Claude Code was launched
+type claudeLaunchedMsg struct {
+	err error
+}
 
 // App is the main Bubble Tea model
 type App struct {
@@ -41,9 +59,13 @@ type App struct {
 	statusMsg    string
 
 	// Views
-	listView   ListView
-	detailView DetailView
-	formView   FormView
+	listView     ListView
+	detailView   DetailView
+	formView     FormView
+	urlInputView URLInputView
+
+	// URL fetch state
+	fetchedPosting string // Path to fetched posting for Claude launch
 
 	// Filter state
 	filterOptions  []string
@@ -62,14 +84,16 @@ func New(s *store.Store) App {
 	listView := NewListView(apps, keys)
 	detailView := NewDetailView(nil, keys)
 	formView := NewFormView(keys)
+	urlInputView := NewURLInputView()
 
 	return App{
-		store:      s,
-		keys:       keys,
-		viewState:  ViewSplash,
-		listView:   listView,
-		detailView: detailView,
-		formView:   formView,
+		store:        s,
+		keys:         keys,
+		viewState:    ViewSplash,
+		listView:     listView,
+		detailView:   detailView,
+		formView:     formView,
+		urlInputView: urlInputView,
 		filterOptions: append([]string{"All"}, func() []string {
 			statuses := model.AllStatuses()
 			labels := make([]string, len(statuses))
@@ -112,6 +136,28 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.viewState = ViewList
 		return a, nil
 
+	case fetchResultMsg:
+		if msg.err != nil {
+			a.urlInputView.SetError(fmt.Sprintf("Fetch failed: %v", msg.err))
+			return a, nil
+		}
+		// Store the posting path and show success message
+		a.fetchedPosting = msg.outputPath
+		a.statusMsg = fmt.Sprintf("Fetched: %s @ %s", msg.position, msg.company)
+		// Now launch Claude with the context
+		return a, a.launchClaude()
+
+	case claudeLaunchedMsg:
+		if msg.err != nil {
+			a.err = msg.err
+			a.viewState = ViewList
+			return a, nil
+		}
+		// Claude was launched successfully, return to list
+		a.viewState = ViewList
+		a.statusMsg = "Claude Code launched with agent context"
+		return a, nil
+
 	case tea.KeyMsg:
 		// Skip splash on any key press
 		if a.viewState == ViewSplash {
@@ -139,6 +185,8 @@ func (a App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a.handleFilterKey(msg)
 	case ViewConfirmDelete:
 		return a.handleDeleteConfirmKey(msg)
+	case ViewURLInput:
+		return a.handleURLInputKey(msg)
 	}
 
 	return a, nil
@@ -203,6 +251,10 @@ func (a App) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "filter":
 			a.filterCursor = 0
 			a.viewState = ViewFilter
+		case "urlinput":
+			a.urlInputView.Reset()
+			a.urlInputView.SetSize(a.width, a.height)
+			a.viewState = ViewURLInput
 		case "search":
 			// Search was just performed, refresh handled above
 		case "clear":
@@ -242,6 +294,16 @@ func (a App) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if a.detailView.application != nil {
 				a.deleteTarget = a.detailView.application
 				a.viewState = ViewConfirmDelete
+			}
+		case "openfolder":
+			if a.detailView.application != nil && a.detailView.application.DocumentsDir != "" {
+				if err := openFolder(a.detailView.application.DocumentsDir); err != nil {
+					a.err = err
+				} else {
+					a.statusMsg = "Opened documents folder"
+				}
+			} else {
+				a.statusMsg = "No documents folder set for this application"
 			}
 		default:
 			if strings.HasPrefix(action, "status:") {
@@ -355,6 +417,109 @@ func (a App) handleDeleteConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return a, nil
 }
 
+// handleURLInputKey processes key input for the URL input dialog.
+// It handles:
+//   - Esc: Cancel and return to list view
+//   - Enter: Validate URL and start fetch process
+//   - Other keys: Update the text input
+func (a App) handleURLInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, a.keys.Cancel):
+		a.viewState = ViewList
+		return a, nil
+	case key.Matches(msg, a.keys.Enter):
+		if a.urlInputView.Validate() {
+			url := a.urlInputView.Value()
+			return a, a.fetchPosting(url)
+		}
+		return a, nil
+	}
+
+	// Update text input
+	input := a.urlInputView.Input()
+	newInput, cmd := input.Update(msg)
+	a.urlInputView.UpdateInput(newInput)
+	return a, cmd
+}
+
+// fetchPosting fetches a job posting from the given URL.
+// Returns a tea.Cmd that runs the fetch in the background and
+// sends a fetchResultMsg when complete.
+func (a App) fetchPosting(url string) tea.Cmd {
+	return func() tea.Msg {
+		// Create fetcher
+		outputDir := "local/postings"
+		f := fetch.NewFetcher(outputDir)
+
+		// Fetch the posting
+		result, err := f.Fetch(url, "")
+		if err != nil {
+			return fetchResultMsg{err: err}
+		}
+
+		return fetchResultMsg{
+			outputPath: result.OutputPath,
+			company:    result.Company,
+			position:   result.Position,
+		}
+	}
+}
+
+// launchClaude launches Claude Code with the agent context.
+// It uses tea.ExecProcess to properly handle the terminal handoff.
+//
+// The command spawned is:
+//
+//	claude --print "$(ghosted context)\n\nProcess the posting at {path} using the agent workflow."
+//
+// This gives Claude full context about the CV, postings, and prompts.
+func (a App) launchClaude() tea.Cmd {
+	// Build the prompt with context
+	prompt := fmt.Sprintf(`Process the job posting at %s using the agent workflow.
+
+Steps:
+1. Read the posting file
+2. Parse it to extract structured job data
+3. Generate a tailored resume (Typst format)
+4. Generate a personalized cover letter (Typst format)
+5. Review the documents (must score 70+ to approve)
+6. Add to the tracker with ghosted add --json
+
+Use the prompts in internal/agent/prompts/ for each step.
+Save generated documents to local/applications/{job-type}/{company}/`, a.fetchedPosting)
+
+	// Get the absolute path to ghosted binary (or use 'ghosted' from PATH)
+	ghostedBin := "ghosted"
+	if exe, err := os.Executable(); err == nil {
+		ghostedBin = exe
+	}
+
+	// Build the context command
+	contextCmd := exec.Command(ghostedBin, "context")
+	contextOutput, err := contextCmd.Output()
+	if err != nil {
+		// Fall back to simpler prompt without context
+		contextOutput = []byte("(Context unavailable - run 'ghosted context' manually)")
+	}
+
+	// Build the full prompt
+	fullPrompt := fmt.Sprintf("%s\n\n%s", string(contextOutput), prompt)
+
+	// Find claude binary
+	claudeBin, err := exec.LookPath("claude")
+	if err != nil {
+		return func() tea.Msg {
+			return claudeLaunchedMsg{err: fmt.Errorf("claude not found in PATH: %w", err)}
+		}
+	}
+
+	// Use tea.ExecProcess to properly hand off the terminal
+	c := exec.Command(claudeBin, "--print", fullPrompt)
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		return claudeLaunchedMsg{err: err}
+	})
+}
+
 func (a *App) refreshList() {
 	if filter := a.listView.FilterStatus(); filter != "" {
 		a.listView.SetApplications(a.store.FilterByStatus(filter))
@@ -382,6 +547,9 @@ func (a App) View() string {
 		b.WriteString(a.renderFilterView())
 	case ViewConfirmDelete:
 		b.WriteString(a.renderDeleteConfirm())
+	case ViewURLInput:
+		a.urlInputView.SetSize(a.width, a.height)
+		return a.urlInputView.View()
 	}
 
 	// Status message
@@ -473,4 +641,21 @@ func (a App) renderSplash() string {
 
 `
 	return SubtleStyle.Render(ghost)
+}
+
+// openFolder opens a folder in the system file manager.
+// Works cross-platform: macOS (open), Windows (explorer), Linux (xdg-open).
+func openFolder(path string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", path)
+	case "windows":
+		cmd = exec.Command("explorer", path)
+	default: // Linux and others
+		cmd = exec.Command("xdg-open", path)
+	}
+
+	return cmd.Start()
 }

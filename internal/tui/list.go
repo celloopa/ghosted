@@ -125,6 +125,8 @@ func (l *ListView) HandleKey(msg tea.KeyMsg) (handled bool, action string) {
 		return true, "view"
 	case key.Matches(msg, l.keys.Filter):
 		return true, "filter"
+	case key.Matches(msg, l.keys.URLInput):
+		return true, "urlinput"
 	case key.Matches(msg, l.keys.Status1):
 		return true, "status:saved"
 	case key.Matches(msg, l.keys.Status2):
@@ -414,13 +416,21 @@ func (l *ListView) renderHelpDialog() string {
 	b.WriteString(strings.Join(statusKeys2, "  "))
 	b.WriteString("\n")
 
+	// AI Agent section
+	b.WriteString("\n")
+	b.WriteString(HelpKeyStyle.Render("AI Agent"))
+	b.WriteString("\n")
+	b.WriteString("  ")
+	b.WriteString(HelpKeyStyle.Render("u") + " " + HelpDescStyle.Render("fetch URL & launch Claude"))
+	b.WriteString("\n")
+
 	// CLI commands section
 	b.WriteString("\n")
 	b.WriteString(HelpKeyStyle.Render("CLI Commands"))
 	b.WriteString("\n")
 	cliCmds := []string{
 		"  " + HelpKeyStyle.Render("ghosted fetch <url>") + "       " + HelpDescStyle.Render("fetch job posting"),
-		"  " + HelpKeyStyle.Render("ghosted add --json '{}'") + "   " + HelpDescStyle.Render("add application"),
+		"  " + HelpKeyStyle.Render("ghosted apply <file>") + "      " + HelpDescStyle.Render("run agent pipeline"),
 		"  " + HelpKeyStyle.Render("ghosted context") + "           " + HelpDescStyle.Render("show agent context"),
 		"  " + HelpKeyStyle.Render("ghosted help") + "              " + HelpDescStyle.Render("full documentation"),
 	}

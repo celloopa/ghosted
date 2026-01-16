@@ -95,6 +95,7 @@ type Application struct {
 	// Documents
 	ResumeVersion string `json:"resume_version,omitempty"`
 	CoverLetter   string `json:"cover_letter,omitempty"`
+	DocumentsDir  string `json:"documents_dir,omitempty"` // Path to application documents folder
 
 	// Follow-up
 	NextFollowUp *time.Time `json:"next_follow_up,omitempty"`

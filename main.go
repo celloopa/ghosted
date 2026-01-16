@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/celloopa/ghosted/internal/agent"
@@ -53,6 +54,8 @@ func main() {
 		cmdContext(s)
 	case "apply":
 		cmdApply(s, os.Args[2:])
+	case "compile":
+		cmdCompile(s, os.Args[2:])
 	case "upgrade":
 		cmdUpgrade()
 	case "help", "--help", "-h":
@@ -93,6 +96,7 @@ Commands:
   delete <id>           Delete an application
   fetch <url> [--output name]  Fetch job posting from URL
   apply <posting> [flags]      Run full pipeline on a job posting
+  compile <id|dir>             Compile .typ to PDF and update tracker
   context               Show context for AI agents (postings, CV, applications)
   upgrade               Update ghosted to the latest version
   help                  Show this help
@@ -110,6 +114,8 @@ Examples:
   ghosted apply local/postings/acme-swe.md
   ghosted apply --dry-run local/postings/test.md
   ghosted apply --auto-approve local/postings/acme-swe.md
+  ghosted compile abc123
+  ghosted compile local/applications/swe/acme/
 
 Apply Command Flags:
   --dry-run       Generate documents without adding to tracker
@@ -381,6 +387,9 @@ func cmdUpdate(s *store.Store, args []string) {
 	}
 	if v, ok := updates["cover_letter"].(string); ok {
 		app.CoverLetter = v
+	}
+	if v, ok := updates["documents_dir"].(string); ok {
+		app.DocumentsDir = v
 	}
 	if v, ok := updates["date_applied"].(string); ok {
 		if t, err := time.Parse("2006-01-02", v); err == nil {
@@ -758,4 +767,202 @@ func cmdUpgrade() {
 		binPath += ".exe"
 	}
 	fmt.Printf("Installed to: %s\n", binPath)
+}
+
+// cmdCompile compiles .typ files to PDFs and updates the tracker
+// Usage: ghosted compile <app-id-or-dir> [--generate-missing]
+func cmdCompile(s *store.Store, args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: ghosted compile <app-id> [--generate-missing]")
+		fmt.Fprintln(os.Stderr, "       ghosted compile <documents-dir> [--generate-missing]")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "Compiles .typ files to PDFs with descriptive names and updates tracker.")
+		fmt.Fprintln(os.Stderr, "Use --generate-missing to create missing cover letters via AI.")
+		os.Exit(1)
+	}
+
+	target := args[0]
+	generateMissing := false
+	for _, arg := range args[1:] {
+		if arg == "--generate-missing" {
+			generateMissing = true
+		}
+	}
+
+	var app *model.Application
+	var documentsDir string
+
+	// Check if target is an app ID or a directory
+	if info, err := os.Stat(target); err == nil && info.IsDir() {
+		// It's a directory path
+		documentsDir = target
+		// Try to find matching application
+		apps := s.List()
+		for i := range apps {
+			if apps[i].DocumentsDir == target || apps[i].DocumentsDir == target+"/" {
+				app = &apps[i]
+				break
+			}
+		}
+	} else {
+		// Try as app ID
+		found, err := s.GetByID(target)
+		if err != nil {
+			// Try partial ID match
+			apps := s.List()
+			for i := range apps {
+				if len(apps[i].ID) >= len(target) && apps[i].ID[:len(target)] == target {
+					found = apps[i]
+					err = nil
+					break
+				}
+			}
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Application not found: %s\n", target)
+			os.Exit(1)
+		}
+		app = &found
+		documentsDir = app.DocumentsDir
+	}
+
+	if documentsDir == "" {
+		fmt.Fprintln(os.Stderr, "Error: No documents_dir set for this application")
+		fmt.Fprintln(os.Stderr, "Set it with: ghosted update <id> --json '{\"documents_dir\":\"local/applications/...\"}'")
+		os.Exit(1)
+	}
+
+	// Check if typst is available
+	typstPath, err := exec.LookPath("typst")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error: typst not found in PATH")
+		fmt.Fprintln(os.Stderr, "Install from: https://typst.app or 'brew install typst'")
+		os.Exit(1)
+	}
+
+	// Generate base name from company/position or directory name
+	baseName := generateBaseName(app, documentsDir)
+
+	fmt.Printf("Compiling documents in: %s\n", documentsDir)
+	fmt.Printf("Base name: %s\n", baseName)
+	fmt.Println()
+
+	var resumePDF, coverPDF string
+
+	// Compile resume.typ if exists
+	resumeTyp := filepath.Join(documentsDir, "resume.typ")
+	if _, err := os.Stat(resumeTyp); err == nil {
+		resumePDF = baseName + "-resume.pdf"
+		outPath := filepath.Join(documentsDir, resumePDF)
+		fmt.Printf("Compiling resume: %s\n", resumePDF)
+		cmd := exec.Command(typstPath, "compile", resumeTyp, outPath)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error compiling resume: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("  ✓ Resume compiled")
+	} else {
+		fmt.Println("No resume.typ found")
+	}
+
+	// Compile cover-letter.typ if exists
+	coverTyp := filepath.Join(documentsDir, "cover-letter.typ")
+	if _, err := os.Stat(coverTyp); err == nil {
+		coverPDF = baseName + "-cover.pdf"
+		outPath := filepath.Join(documentsDir, coverPDF)
+		fmt.Printf("Compiling cover letter: %s\n", coverPDF)
+		cmd := exec.Command(typstPath, "compile", coverTyp, outPath)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error compiling cover letter: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("  ✓ Cover letter compiled")
+	} else {
+		fmt.Println("No cover-letter.typ found")
+		if generateMissing {
+			fmt.Println("\n--generate-missing: Cover letter generation requires running the agent.")
+			fmt.Println("Run: ghosted apply " + filepath.Join(documentsDir, "posting.md"))
+		}
+	}
+
+	// Update tracker if we have an app
+	if app != nil && (resumePDF != "" || coverPDF != "") {
+		updates := make(map[string]interface{})
+		if resumePDF != "" {
+			updates["resume_version"] = resumePDF
+		}
+		if coverPDF != "" {
+			updates["cover_letter"] = coverPDF
+		}
+
+		// Apply updates to app
+		if resumePDF != "" {
+			app.ResumeVersion = resumePDF
+		}
+		if coverPDF != "" {
+			app.CoverLetter = coverPDF
+		}
+
+		if err := s.Update(*app); err != nil {
+			fmt.Fprintf(os.Stderr, "Error updating tracker: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println()
+		fmt.Printf("Updated tracker entry: %s @ %s\n", app.Position, app.Company)
+		if resumePDF != "" {
+			fmt.Printf("  resume_version: %s\n", resumePDF)
+		}
+		if coverPDF != "" {
+			fmt.Printf("  cover_letter: %s\n", coverPDF)
+		}
+	} else if app == nil {
+		fmt.Println()
+		fmt.Println("No matching tracker entry found. Add one with:")
+		fmt.Printf("  ghosted add --json '{\"company\":\"...\",\"position\":\"...\",\"documents_dir\":\"%s\"}'\n", documentsDir)
+	}
+
+	fmt.Println()
+	fmt.Println("Done!")
+}
+
+// generateBaseName creates a filename base from app or directory
+func generateBaseName(app *model.Application, dir string) string {
+	if app != nil && app.Company != "" && app.Position != "" {
+		// Sanitize company and position for filename
+		company := sanitizeForFilename(app.Company)
+		position := sanitizeForFilename(app.Position)
+		// Truncate if too long
+		if len(position) > 20 {
+			position = position[:20]
+		}
+		return company + "-" + position
+	}
+
+	// Fall back to directory name
+	dir = filepath.Clean(dir)
+	return filepath.Base(dir)
+}
+
+// sanitizeForFilename makes a string safe for use in filenames
+func sanitizeForFilename(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "-")
+	// Remove characters that are problematic in filenames
+	var result strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			result.WriteRune(r)
+		}
+	}
+	// Remove multiple dashes
+	out := result.String()
+	for strings.Contains(out, "--") {
+		out = strings.ReplaceAll(out, "--", "-")
+	}
+	return strings.Trim(out, "-")
 }

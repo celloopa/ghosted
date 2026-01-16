@@ -264,6 +264,7 @@ You can read and write this file directly. The TUI will pick up changes on next 
   "contact_email": "string",
   "resume_version": "string",
   "cover_letter": "string",
+  "documents_dir": "local/applications/{job-type}/{company}/",
   "interviews": [
     {
       "date": "2024-01-20T14:00:00Z",
@@ -312,6 +313,27 @@ Progress applications through the pipeline:
 ./ghosted update <id> --json '{"status":"offer","salary_min":175000,"salary_max":175000}'
 ```
 
+### Compiling Documents
+
+After generating `.typ` files with the agent pipeline, compile them to PDFs:
+
+```bash
+# Compile by application ID (uses documents_dir from tracker)
+./ghosted compile abc123
+
+# Compile by directory path
+./ghosted compile local/applications/swe/acme/
+```
+
+This will:
+1. Compile `resume.typ` → `{company}-{position}-resume.pdf`
+2. Compile `cover-letter.typ` → `{company}-{position}-cover.pdf`
+3. Auto-update the tracker entry with the PDF filenames
+
+### Opening Documents Folder
+
+In the TUI, press `o` in detail view to open the application's documents folder in your system file manager.
+
 ---
 
 ## Future: Local Model Integration
@@ -336,8 +358,10 @@ Implementation would add:
 | a | Add new |
 | e | Edit |
 | d | Delete |
+| o | Open documents folder (detail view) |
+| u | Fetch URL (launch AI workflow) |
 | Enter | View details |
-| 1-7 | Quick status change |
+| 1-8 | Quick status change |
 | / | Search |
 | f | Filter by status |
 | c | Clear filters |
