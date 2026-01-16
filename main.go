@@ -696,8 +696,42 @@ func cmdContext(s *store.Store) {
 	}
 	fmt.Println()
 
-	fmt.Println(`═══════════════════════════════════════════════════════════════════════════════
-WORKFLOW: fetch posting → parse → generate resume/cover → review → add to tracker
+	fmt.Println(`🤖 AGENT INSTRUCTIONS (MANDATORY)
+───────────────────────────────────────────────────────────────────────────────
+When processing job applications, you MUST follow this pipeline in order:
+
+  1. PARSE    Read the job posting and extract structured requirements
+              → Use internal/agent/prompts/parser.md guidelines
+              → Identify: requirements, tech_stack, keywords, company_values
+
+  2. RESUME   Generate tailored resume in Typst format
+              → Use internal/agent/prompts/resume.md guidelines
+              → Mirror posting language, prioritize relevant experience
+              → Output: local/applications/{job-type}/{company}/resume.typ
+
+  3. COVER    Generate cover letter in Typst format
+              → Use internal/agent/prompts/cover.md guidelines
+              → Connect 2-3 achievements to requirements, show genuine interest
+              → Output: local/applications/{job-type}/{company}/cover-letter.typ
+
+  4. COMPILE  Convert Typst to PDF
+              → Run: typst compile resume.typ {company}-{role}-resume.pdf
+              → Run: typst compile cover-letter.typ {company}-{role}-cover.pdf
+
+  5. REVIEW   Score documents and provide feedback
+              → Use internal/agent/prompts/reviewer.md guidelines
+              → Score 80+: Approve | 60-79: Minor edits | <60: Revise
+              → Output structured JSON review with strengths/weaknesses/suggestions
+
+  6. ITERATE  If score < 80, apply suggestions and re-review
+
+  7. TRACKER  Add to ghosted tracker (only after approval)
+              → Run: ghosted add --json '{"company":"...", "position":"..."}'
+
+DO NOT skip the REVIEW step. Every generated document must be scored.
+
+═══════════════════════════════════════════════════════════════════════════════
+WORKFLOW: parse → resume → cover → compile → review → iterate → tracker
 ═══════════════════════════════════════════════════════════════════════════════`)
 }
 
