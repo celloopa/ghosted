@@ -125,6 +125,8 @@ func (l *ListView) HandleKey(msg tea.KeyMsg) (handled bool, action string) {
 		return true, "view"
 	case key.Matches(msg, l.keys.Filter):
 		return true, "filter"
+	case key.Matches(msg, l.keys.Fetch):
+		return true, "fetch"
 	case key.Matches(msg, l.keys.Status1):
 		return true, "status:saved"
 	case key.Matches(msg, l.keys.Status2):
@@ -419,12 +421,17 @@ func (l *ListView) renderHelpDialog() string {
 	b.WriteString(HelpKeyStyle.Render("CLI Commands"))
 	b.WriteString("\n")
 	cliCmds := []string{
-		"  " + HelpKeyStyle.Render("ghosted fetch <url>") + "       " + HelpDescStyle.Render("fetch job posting"),
+		"  " + HelpKeyStyle.Render("ghosted fetch <url>") + "       " + HelpDescStyle.Render("fetch job posting or CV"),
 		"  " + HelpKeyStyle.Render("ghosted add --json '{}'") + "   " + HelpDescStyle.Render("add application"),
 		"  " + HelpKeyStyle.Render("ghosted context") + "           " + HelpDescStyle.Render("show agent context"),
 		"  " + HelpKeyStyle.Render("ghosted help") + "              " + HelpDescStyle.Render("full documentation"),
 	}
 	b.WriteString(strings.Join(cliCmds, "\n"))
+	b.WriteString("\n")
+
+	// Tips
+	b.WriteString("\n")
+	b.WriteString(SubtleStyle.Render("Tip: Press F to fetch a job posting or CV by URL"))
 	b.WriteString("\n")
 
 	// Footer

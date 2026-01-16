@@ -23,6 +23,7 @@ const (
 	ViewForm
 	ViewFilter
 	ViewConfirmDelete
+	ViewFetch
 )
 
 // splashDoneMsg signals the splash screen is done
@@ -44,6 +45,7 @@ type App struct {
 	listView   ListView
 	detailView DetailView
 	formView   FormView
+	fetchView  FetchView
 
 	// Filter state
 	filterOptions  []string
@@ -62,6 +64,7 @@ func New(s *store.Store) App {
 	listView := NewListView(apps, keys)
 	detailView := NewDetailView(nil, keys)
 	formView := NewFormView(keys)
+	fetchView := NewFetchView(keys)
 
 	return App{
 		store:      s,
@@ -70,6 +73,7 @@ func New(s *store.Store) App {
 		listView:   listView,
 		detailView: detailView,
 		formView:   formView,
+		fetchView:  fetchView,
 		filterOptions: append([]string{"All"}, func() []string {
 			statuses := model.AllStatuses()
 			labels := make([]string, len(statuses))
@@ -106,10 +110,15 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.listView.SetSize(a.contentWidth, msg.Height)
 		a.detailView.SetSize(a.contentWidth, msg.Height)
 		a.formView.SetSize(a.contentWidth, msg.Height)
+		a.fetchView.SetSize(a.contentWidth, msg.Height)
 		return a, nil
 
 	case splashDoneMsg:
 		a.viewState = ViewList
+		return a, nil
+
+	case fetchCompleteMsg:
+		a.fetchView.HandleFetchComplete(msg)
 		return a, nil
 
 	case tea.KeyMsg:
@@ -139,6 +148,8 @@ func (a App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a.handleFilterKey(msg)
 	case ViewConfirmDelete:
 		return a.handleDeleteConfirmKey(msg)
+	case ViewFetch:
+		return a.handleFetchKey(msg)
 	}
 
 	return a, nil
@@ -208,6 +219,10 @@ func (a App) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "clear":
 			a.listView.SetApplications(a.store.List())
 			a.listView.SetFilterStatus("")
+		case "fetch":
+			a.fetchView.Reset()
+			a.prevState = a.viewState
+			a.viewState = ViewFetch
 		default:
 			if strings.HasPrefix(action, "status:") {
 				status := strings.TrimPrefix(action, "status:")
@@ -355,6 +370,32 @@ func (a App) handleDeleteConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return a, nil
 }
 
+func (a App) handleFetchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// If fetching, ignore keys
+	if a.fetchView.IsFetching() {
+		return a, nil
+	}
+
+	handled, action := a.fetchView.HandleKey(msg)
+	if handled {
+		switch action {
+		case "cancel":
+			a.viewState = a.prevState
+		case "fetch":
+			return a, a.fetchView.StartFetch()
+		case "done":
+			a.viewState = a.prevState
+		}
+		return a, nil
+	}
+
+	// Handle text input
+	input := a.fetchView.URLInput()
+	newInput, cmd := input.Update(msg)
+	a.fetchView.UpdateURLInput(newInput)
+	return a, cmd
+}
+
 func (a *App) refreshList() {
 	if filter := a.listView.FilterStatus(); filter != "" {
 		a.listView.SetApplications(a.store.FilterByStatus(filter))
@@ -382,6 +423,8 @@ func (a App) View() string {
 		b.WriteString(a.renderFilterView())
 	case ViewConfirmDelete:
 		b.WriteString(a.renderDeleteConfirm())
+	case ViewFetch:
+		b.WriteString(a.fetchView.View())
 	}
 
 	// Status message
