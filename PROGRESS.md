@@ -29,7 +29,7 @@ When a user drops a job posting into `local/postings/`, agents will:
 | Status | Task | ID | Notes |
 |--------|------|----|-------|
 | `[x]` | Design multi-agent pipeline architecture | `72b33fb7-8924-4b3f-8c38-11001f93436d` | ✅ Created `internal/agent/config.go`, `pipeline.go`, and runtime config |
-| `[ ]` | Create agent prompt templates | `88ab2620-aeae-4842-a45c-e6453f3ee1b0` | Prompts for each agent role |
+| `[x]` | Create agent prompt templates | `88ab2620-aeae-4842-a45c-e6453f3ee1b0` | Prompts for each agent role |
 
 ### Phase 2: Core Agents
 
@@ -89,7 +89,13 @@ ghosted/
 │   │   ├── resume_generator.go      # Resume Generator Agent
 │   │   ├── coverletter_generator.go # Cover Letter Generator Agent
 │   │   ├── reviewer.go              # Hiring Manager Review Agent
-│   │   └── tracker.go               # Tracker Integration
+│   │   ├── tracker.go               # Tracker Integration
+│   │   └── prompts/                 # ✅ Agent prompt templates
+│   │       ├── parser.md            # ✅ Parser agent prompt
+│   │       ├── resume.md            # ✅ Resume generator prompt
+│   │       ├── cover.md             # ✅ Cover letter generator prompt
+│   │       ├── reviewer.md          # ✅ Reviewer agent prompt
+│   │       └── tracker.md           # ✅ Tracker integration prompt
 │   └── ...
 ├── local/
 │   ├── postings/                    # Drop job postings here
@@ -99,12 +105,7 @@ ghosted/
 │   ├── cover-letters/               # Generated cover letter PDFs
 │   └── document-generation/
 │       ├── .agent/
-│       │   ├── config.json          # ✅ Runtime configuration
-│       │   └── prompts/
-│       │       ├── parser.md        # Parser agent prompt
-│       │       ├── resume.md        # Resume generator prompt
-│       │       ├── coverletter.md   # Cover letter generator prompt
-│       │       └── reviewer.md      # Reviewer agent prompt
+│       │   └── config.json          # Runtime configuration (references local files)
 │       ├── cv.json                  # Source CV data
 │       ├── resume.typ               # Base resume template
 │       └── coverletter.typ          # Base cover letter template
@@ -191,6 +192,24 @@ ghosted watch --auto-approve               # Auto-approve all
 ---
 
 ## Completed Work Log
+
+### 2026-01-16: Agent Prompt Templates (Task 7)
+
+**Files created:**
+- `internal/agent/prompts/parser.md` - Job posting parser prompt
+- `internal/agent/prompts/resume.md` - Resume generator prompt with Typst format
+- `internal/agent/prompts/cover.md` - Cover letter generator prompt with Typst format
+- `internal/agent/prompts/reviewer.md` - Hiring manager review prompt with scoring criteria
+- `internal/agent/prompts/tracker.md` - Tracker integration prompt for ghosted CLI
+
+**Key features:**
+- Parser: Structured JSON output with requirements, tech_stack, keywords, company_values
+- Resume: Typst template with tailoring principles, keyword optimization, skills highlighting
+- Cover Letter: Three-section structure (Hook, Bridge, Value) with tone guidelines
+- Reviewer: Scoring criteria (40% requirements, 30% experience, 20% communication, 10% culture)
+- Tracker: CLI command generation with file organization and validation
+
+---
 
 ### 2026-01-16: Posting Parser Agent (Task 2)
 
