@@ -1,6 +1,6 @@
 # Multi-Agent Document Generation Pipeline - Progress Tracker
 
-> **Last Updated:** 2026-01-16
+> **Last Updated:** 2026-01-16 (agents completed)
 > **Project:** ghosted
 > **Kanban Project ID:** `b666852b-0ef9-4ee0-8d91-a7f341697897`
 > **GitHub Repo:** `celloopa/ghosted`
@@ -36,15 +36,15 @@ When a user drops a job posting into `local/postings/`, agents will:
 | Status | Task | ID | Notes |
 |--------|------|----|-------|
 | `[x]` | Implement Posting Parser Agent | `bcaee5cf-e414-4d4f-b3c4-61a6da2ed451` | ✅ Created `parser.go` with tests |
-| `[ ]` | Implement Resume Generator Agent | `c4f2f83d-2f81-49d3-95d5-4af1dcc9f98c` | Input: JSON + cv.json → Output: .typ + .pdf |
-| `[ ]` | Implement Cover Letter Generator Agent | `e28db1da-93ee-418f-a0a7-a88605f3c398` | Input: JSON + profile → Output: .typ + .pdf |
-| `[ ]` | Implement Hiring Manager Review Agent | `05b75d49-34ad-47a8-b019-532d73b8469d` | Score docs, approve/reject with feedback |
+| `[x]` | Implement Resume Generator Agent | `c4f2f83d-2f81-49d3-95d5-4af1dcc9f98c` | ✅ `resume_generator.go` + 14 tests |
+| `[x]` | Implement Cover Letter Generator Agent | `e28db1da-93ee-418f-a0a7-a88605f3c398` | ✅ `coverletter_generator.go` + 13 tests |
+| `[x]` | Implement Hiring Manager Review Agent | `05b75d49-34ad-47a8-b019-532d73b8469d` | ✅ `reviewer.go` + 17 tests |
 
 ### Phase 3: Integration
 
 | Status | Task | ID | Notes |
 |--------|------|----|-------|
-| `[ ]` | Implement Tracker Integration | `1dd2fb3f-6555-4baf-b7bb-d77056c1968d` | Add to ghosted, organize files |
+| `[x]` | Implement Tracker Integration | `1dd2fb3f-6555-4baf-b7bb-d77056c1968d` | ✅ `tracker.go` + 23 tests |
 | `[ ]` | Add `ghosted apply` CLI command | `b9615c5d-fd52-418c-89da-4bec8c724f83` | User-facing command |
 | `[ ]` | Add watch mode for automatic processing | `2cdc1317-ddc0-408b-ab3d-b6fb92e2887b` | Nice-to-have: monitor folder |
 
@@ -86,10 +86,14 @@ ghosted/
 │   │   ├── config.go                # ✅ Agent configuration loader
 │   │   ├── parser.go                # ✅ Posting Parser Agent
 │   │   ├── parser_test.go           # ✅ Parser agent tests
-│   │   ├── resume_generator.go      # Resume Generator Agent
-│   │   ├── coverletter_generator.go # Cover Letter Generator Agent
-│   │   ├── reviewer.go              # Hiring Manager Review Agent
-│   │   ├── tracker.go               # Tracker Integration
+│   │   ├── resume_generator.go      # ✅ Resume Generator Agent
+│   │   ├── resume_generator_test.go # ✅ 14 tests
+│   │   ├── coverletter_generator.go # ✅ Cover Letter Generator Agent
+│   │   ├── coverletter_generator_test.go # ✅ 13 tests
+│   │   ├── reviewer.go              # ✅ Hiring Manager Review Agent
+│   │   ├── reviewer_test.go         # ✅ 17 tests
+│   │   ├── tracker.go               # ✅ Tracker Integration
+│   │   ├── tracker_test.go          # ✅ 23 tests
 │   │   └── prompts/                 # ✅ Agent prompt templates
 │   │       ├── parser.md            # ✅ Parser agent prompt
 │   │       ├── resume.md            # ✅ Resume generator prompt
@@ -180,18 +184,102 @@ ghosted watch --auto-approve               # Auto-approve all
 
 ## Current Focus
 
-**Next task to work on:** Implement Resume Generator Agent (`c4f2f83d`)
+**Completed:** `ghosted fetch <url>` command - fetches job postings from URLs
+
+**Next task to work on:** Add `ghosted apply <file>` CLI command (`b9615c5d`)
 
 **Blockers:** None
 
 **Questions/Decisions:**
 - [x] Should agents be Claude Code subagents or Go code with LLM API calls? → **Claude Code subagents**
-- [ ] Approval threshold: 70/100 score?
-- [ ] Keep rejected postings or delete them?
+- [x] Approval threshold: 70/100 score? → **Yes, implemented in reviewer.go**
+- [x] Keep rejected postings or delete them? → **Save feedback to `{company}-feedback.json`, keep posting for revision**
+- [x] URL support for apply? → **Fetch-first workflow: `ghosted fetch` then `ghosted apply`**
+
+---
+
+## Session Notes (for context reset)
+
+### What's Done
+1. **All 4 core agents implemented** with 80+ tests:
+   - `resume_generator.go` - CV loading, Typst output, skill matching
+   - `coverletter_generator.go` - Experience extraction, consistency with resume
+   - `reviewer.go` - Scoring (70+ approval), detailed feedback
+   - `tracker.go` - Store integration, file organization
+
+2. **`ghosted fetch` command implemented**:
+   - `internal/fetch/fetcher.go` - URL fetching, HTML parsing, markdown conversion
+   - Supports: Lever, Greenhouse, Workday, LinkedIn, Ashby, generic
+   - Saves to `local/postings/` with metadata header
+   - Usage: `ghosted fetch https://jobs.lever.co/company/123`
+
+### What's Next
+1. **Implement `ghosted apply <file>`** - This will:
+   - Accept a posting file from `local/postings/`
+   - Run the full pipeline (Parser → Resume → Cover → Reviewer → Tracker)
+   - Invoke Claude Code for AI-powered document generation
+   - Wire up all the agents we built
+
+2. **Test the full workflow**:
+   ```bash
+   ghosted fetch https://jobs.lever.co/some-company/123
+   ghosted apply local/postings/some-company-swe-posting.md
+   ```
 
 ---
 
 ## Completed Work Log
+
+### 2026-01-16: All Core Agents Implemented (Tasks 1-4)
+
+**Files created:**
+- `internal/agent/resume_generator.go` - Resume Generator Agent
+- `internal/agent/resume_generator_test.go` - 14 tests
+- `internal/agent/coverletter_generator.go` - Cover Letter Generator Agent
+- `internal/agent/coverletter_generator_test.go` - 13 tests
+- `internal/agent/reviewer.go` - Hiring Manager Review Agent
+- `internal/agent/reviewer_test.go` - 17 tests
+- `internal/agent/tracker.go` - Tracker Integration Agent
+- `internal/agent/tracker_test.go` - 23 tests
+
+**Total: 67 new tests (80+ total in agent package)**
+
+**Resume Generator Agent features:**
+- CV loading from JSON Resume format
+- Typst template loading
+- Skill matching between CV and job requirements
+- Output path generation with job-type folders
+- PDF compilation via Typst CLI
+- Prompt generation for AI-based tailoring
+
+**Cover Letter Generator Agent features:**
+- CV and resume loading for consistency
+- Relevant experience extraction (scored by job match)
+- Three-section structure (Hook, Bridge, Value)
+- Typst output with modern-cv template
+
+**Hiring Manager Review Agent features:**
+- Document loading and validation
+- Weighted scoring (60% resume, 40% cover letter)
+- Requirement match analysis (met/missing/bonus)
+- Approval threshold: 70/100
+- Recommendation categories: Approve, Approve with edits, Revise, Not recommended
+- Detailed feedback with strengths, weaknesses, suggestions
+
+**Tracker Integration Agent features:**
+- Application creation in ghosted store
+- Notes generation from tech stack, score, requirements
+- Job type auto-detection (fe-dev, ux-design, product-design, swe)
+- Application folder path generation
+- Posting archival to processed folder
+- Rejection feedback file creation
+
+**Run tests:**
+```bash
+go test -v ./internal/agent/...
+```
+
+---
 
 ### 2026-01-16: Agent Prompt Templates (Task 7)
 
