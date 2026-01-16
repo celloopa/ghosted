@@ -3,6 +3,7 @@
 > **Last Updated:** 2026-01-16
 > **Project:** ghosted
 > **Kanban Project ID:** `b666852b-0ef9-4ee0-8d91-a7f341697897`
+> **GitHub Repo:** `celloopa/ghosted`
 
 ## Overview
 
@@ -46,6 +47,31 @@ When a user drops a job posting into `local/postings/`, agents will:
 | `[ ]` | Implement Tracker Integration | `1dd2fb3f-6555-4baf-b7bb-d77056c1968d` | Add to ghosted, organize files |
 | `[ ]` | Add `ghosted apply` CLI command | `b9615c5d-fd52-418c-89da-4bec8c724f83` | User-facing command |
 | `[ ]` | Add watch mode for automatic processing | `2cdc1317-ddc0-408b-ab3d-b6fb92e2887b` | Nice-to-have: monitor folder |
+
+---
+
+## GitHub Issues
+
+All remaining tasks are tracked as GitHub issues. Each issue includes full implementation details and testing requirements.
+
+| Issue | Title | Phase |
+|-------|-------|-------|
+| [#1](https://github.com/celloopa/ghosted/issues/1) | Implement Resume Generator Agent | Core |
+| [#2](https://github.com/celloopa/ghosted/issues/2) | Implement Cover Letter Generator Agent | Core |
+| [#3](https://github.com/celloopa/ghosted/issues/3) | Implement Hiring Manager Review Agent | Core |
+| [#4](https://github.com/celloopa/ghosted/issues/4) | Implement Tracker Integration | Integration |
+| [#5](https://github.com/celloopa/ghosted/issues/5) | Add `ghosted apply` CLI command | Integration |
+| [#6](https://github.com/celloopa/ghosted/issues/6) | Add watch mode for automatic processing | Nice-to-have |
+| [#7](https://github.com/celloopa/ghosted/issues/7) | Create agent prompt templates | Foundation |
+
+### Workflow
+
+1. Pick an issue from the list above
+2. Create a feature branch: `git checkout -b feature/issue-N-short-description`
+3. Implement the feature with tests
+4. Ensure all tests pass: `go test ./...`
+5. Submit a pull request referencing the issue
+6. Update task status in kanban and PROGRESS.md
 
 ---
 

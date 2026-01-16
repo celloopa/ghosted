@@ -88,6 +88,76 @@ go build -o ghosted
 
 ---
 
+## Agent Task Workflow
+
+When working on tasks from the GitHub issues or kanban board, follow this workflow:
+
+### 1. Starting a Task
+
+```bash
+# Create a feature branch
+git checkout -b feature/issue-N-short-description
+
+# Example:
+git checkout -b feature/issue-1-resume-generator
+```
+
+### 2. Implementation Requirements
+
+Every task completion MUST include:
+
+- **Implementation**: The feature code in the appropriate `internal/agent/` file
+- **Tests**: A corresponding `*_test.go` file with comprehensive test coverage
+- **Documentation**: Update `PROGRESS.md` with completion notes
+
+### 3. Testing
+
+All code must pass tests before submission:
+
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with verbose output
+go test -v ./internal/agent/...
+
+# Run specific test
+go test -v ./internal/agent/ -run TestParserAgent
+```
+
+### 4. Submitting Changes
+
+```bash
+# Stage and commit changes
+git add .
+git commit -m "Implement [feature] (#N)
+
+- Add internal/agent/feature.go
+- Add internal/agent/feature_test.go
+- [Other changes]
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# Push and create PR
+git push -u origin feature/issue-N-short-description
+gh pr create --title "Implement [feature]" --body "Closes #N
+
+## Changes
+- [List changes]
+
+## Testing
+- [Describe test coverage]"
+```
+
+### 5. After PR Merged
+
+Update tracking:
+- Mark GitHub issue as closed (automatic if PR says "Closes #N")
+- Update kanban task status to `done`
+- Update `PROGRESS.md` task status and completion log
+
+---
+
 ## Agent Usage
 
 This app is designed to be easily edited by AI agents. You can add/update job applications from job posting text or screenshots.
