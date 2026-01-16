@@ -1,6 +1,6 @@
 # Multi-Agent Document Generation Pipeline - Progress Tracker
 
-> **Last Updated:** 2026-01-16 (cv fetch command complete)
+> **Last Updated:** 2026-01-16 (unified fetch command complete)
 > **Project:** ghosted
 > **Kanban Project ID:** `b666852b-0ef9-4ee0-8d91-a7f341697897`
 > **GitHub Repo:** `celloopa/ghosted`
@@ -198,7 +198,7 @@ ghosted watch --auto-approve               # Auto-approve all
 ## Current Focus
 
 **Completed:**
-- `ghosted fetch <url>` command - fetches job postings from URLs
+- `ghosted fetch <url|domain>` command - unified fetch for job postings AND CVs (auto-detected)
 - `ghosted apply <posting>` command - runs full pipeline with --dry-run support
 - `ghosted context` command - outputs context for AI agents (postings, CV, applications)
 - `ghosted compile <id|dir>` command - compiles Typst to PDF and updates tracker
@@ -343,15 +343,39 @@ Replace Claude API calls with local model inference:
 
 ## Completed Work Log
 
-### 2026-01-16: CV Fetch Command
+### 2026-01-16: Unified Fetch Command + TUI Fetch View
 
-**`ghosted cv fetch <website>` command:**
-- Fetches CV from remote websites (e.g., `ghosted cv fetch cello.design`)
-- Automatically constructs URL as `https://{website}/cv.json`
-- Validates JSON structure before saving
-- Creates timestamped backup of existing cv.json before overwriting
-- Displays name and title from the fetched CV
-- Usage: `ghosted cv fetch cello.design` → `local/cv.json`
+Merged job posting fetch and CV fetch into a single `ghosted fetch` command with auto-detection.
+Also added a TUI fetch view accessible via `f` key.
+
+**Files created/modified:**
+- `internal/fetch/fetcher.go` - Added `FetchType` enum and `DetectFetchType()` function
+- `internal/fetch/cv.go` - New CV fetcher with JSON Resume support
+- `internal/fetch/cv_test.go` - 8 tests for CV fetching and detection
+- `main.go` - Unified `cmdFetch()` to handle both types
+- `internal/tui/fetch.go` - New FetchView with URL input and async fetch
+- `internal/tui/keys.go` - Updated key bindings
+- `internal/tui/app.go` - Added ViewFetch state
+- `internal/tui/list.go` - Added fetch action
+
+**Detection rules:**
+- Bare domain (`cello.design`) → CV fetch to `local/cv.json`
+- Explicit `/cv.json` path → CV fetch
+- Any URL with path → Job posting fetch to `local/postings/`
+
+**Usage (CLI):**
+```bash
+ghosted fetch https://jobs.lever.co/company/123  # Job posting
+ghosted fetch cello.design                       # CV from domain/cv.json
+ghosted fetch https://example.com/cv.json        # CV from explicit URL
+```
+
+**Usage (TUI):**
+Press `f` from the list view to open the fetch dialog.
+
+**Key binding changes:**
+- `s` = filter by status (was `f`)
+- `f` = fetch URL (new)
 
 ---
 

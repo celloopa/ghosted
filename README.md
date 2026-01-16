@@ -82,7 +82,8 @@ ghosted
 | `Enter` | View details |
 | `1-8` | Quick status change |
 | `/` | Search |
-| `f` | Filter by status |
+| `s` | Filter by status |
+| `f` | Fetch job posting or CV |
 | `c` | Clear filters |
 | `?` | Toggle help |
 | `q` | Quit |
@@ -131,10 +132,16 @@ ghosted help
 
 ### Fetch Command
 
-Automatically fetch and save job postings from popular job boards:
+Fetch job postings or CVs with auto-detection:
 
 ```bash
-ghosted fetch <url>
+# Job postings (any URL with a path)
+ghosted fetch https://jobs.lever.co/company/job-id
+ghosted fetch https://boards.greenhouse.io/company/jobs/123
+
+# CV/Resume (bare domain or /cv.json path)
+ghosted fetch cello.design                    # Fetches domain/cv.json
+ghosted fetch https://example.com/cv.json     # Explicit CV URL
 ```
 
 **Supported job boards:**
@@ -145,7 +152,13 @@ ghosted fetch <url>
 - Ashby
 - Generic HTML pages
 
-The command extracts company name and position, converts the posting to markdown, and saves it to `local/postings/`.
+**CV fetching:**
+- Fetches JSON Resume format from `{domain}/cv.json`
+- Saves to `local/cv.json`
+
+Job postings are converted to markdown and saved to `local/postings/`.
+
+You can also fetch from within the TUI by pressing `f`.
 
 ### CV Fetch Command
 
@@ -269,6 +282,7 @@ Prompt templates are in `internal/agent/prompts/`. See [CLAUDE.md](CLAUDE.md) fo
 │       ├── list.go         # List view
 │       ├── detail.go       # Detail view
 │       ├── form.go         # Add/edit form
+│       ├── fetch.go        # Fetch URL view
 │       ├── styles.go       # Lip Gloss styling
 │       └── keys.go         # Key bindings
 ├── samples/

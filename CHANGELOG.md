@@ -6,16 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.0-beta] - 2026-01-16
+
 ### Added
 
-- **Fetch Command** ([#14](https://github.com/celloopa/ghosted/pull/14))
-  - New `ghosted fetch <url>` command to fetch job postings from URLs
-  - Support for multiple job boards: Lever, Greenhouse, Workday, LinkedIn, Ashby
-  - Auto-detect company name and position from page content
-  - Convert HTML to clean markdown with metadata header
-  - Save to `local/postings/` directory
+- **Unified Fetch Command** - Auto-detects job postings vs CV
+  - `ghosted fetch <url|domain>` now handles both job postings and CVs
+  - **Job posting fetch**: Any URL with a path → saves to `local/postings/`
+    - Support for Lever, Greenhouse, Workday, LinkedIn, Ashby, and generic HTML
+    - Auto-detect company name and position from page content
+    - Convert HTML to clean markdown with metadata header
+  - **CV fetch**: Bare domain or `/cv.json` path → saves to `local/cv.json`
+    - Fetches JSON Resume format from `{domain}/cv.json`
+    - Extracts name and label from JSON Resume basics
+  - **TUI fetch view**: Press `f` from the list view to fetch via the TUI
+    - URL input with auto-detection
+    - Async fetch with loading state and result display
   ```bash
-  ghosted fetch https://jobs.lever.co/company/job-id
+  ghosted fetch https://jobs.lever.co/company/job-id   # Job posting
+  ghosted fetch cello.design                           # CV from domain/cv.json
+  ghosted fetch https://example.com/cv.json            # CV from explicit URL
   ghosted fetch --output acme-swe.md https://example.com/job
   ```
 
@@ -73,3 +83,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     - `cover.md` - Cover letter generator (creates personalized Typst cover letters)
     - `reviewer.md` - Hiring manager reviewer (scores documents with feedback)
     - `tracker.md` - Tracker integration (generates ghosted CLI commands)
+
+### Changed
+
+- **TUI key bindings**: `s` for filter by status, `f` for fetch (previously `f` for filter)

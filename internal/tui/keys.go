@@ -36,6 +36,9 @@ type KeyMap struct {
 	Filter key.Binding
 	Clear  key.Binding
 
+	// Fetch
+	Fetch key.Binding
+
 	// General
 	Help key.Binding
 	Quit key.Binding
@@ -137,12 +140,18 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("/", "search"),
 		),
 		Filter: key.NewBinding(
-			key.WithKeys("f"),
-			key.WithHelp("f", "filter"),
+			key.WithKeys("s"),
+			key.WithHelp("s", "filter status"),
 		),
 		Clear: key.NewBinding(
 			key.WithKeys("c"),
 			key.WithHelp("c", "clear filter"),
+		),
+
+		// Fetch
+		Fetch: key.NewBinding(
+			key.WithKeys("f"),
+			key.WithHelp("f", "fetch"),
 		),
 
 		// General
@@ -173,7 +182,7 @@ func DefaultKeyMap() KeyMap {
 
 // ShortHelp returns keybindings to show in the mini help view
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Add, k.Enter, k.Filter, k.Search, k.Help, k.Quit}
+	return []key.Binding{k.Add, k.Enter, k.Filter, k.Fetch, k.Help, k.Quit}
 }
 
 // FullHelp returns keybindings for the expanded help view (excludes status keys shown separately)
@@ -181,7 +190,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Top, k.Bottom},
 		{k.Add, k.Edit, k.Delete, k.Enter},
-		{k.Search, k.Filter, k.Clear},
+		{k.Search, k.Filter, k.Clear, k.Fetch},
 		{k.Help, k.Quit},
 	}
 }
