@@ -37,6 +37,8 @@ Review and update the status of AI-created entries directly from the TUI.
 - **Status Pipeline** - Track applications from saved → applied → ghosted into oblivion
 - **Search & Filter** - Quickly find applications by company, position, or status
 - **Quick Actions** - Change status with single keystrokes (1-8)
+- **Fetch Command** - Auto-fetch job postings from Lever, Greenhouse, LinkedIn, and more
+- **Agent Pipeline** - Multi-agent system for automated resume and cover letter generation
 
 ## Installation
 
@@ -115,9 +117,31 @@ ghosted update abc123 --json '{"status":"interview","notes":"Phone screen schedu
 # Delete application
 ghosted delete abc123
 
+# Fetch job posting from URL
+ghosted fetch https://jobs.lever.co/company/job-id
+ghosted fetch --output acme-swe.md https://example.com/job
+
 # Help
 ghosted help
 ```
+
+### Fetch Command
+
+Automatically fetch and save job postings from popular job boards:
+
+```bash
+ghosted fetch <url>
+```
+
+**Supported job boards:**
+- Lever (`jobs.lever.co`)
+- Greenhouse (`boards.greenhouse.io`)
+- Workday
+- LinkedIn Jobs
+- Ashby
+- Generic HTML pages
+
+The command extracts company name and position, converts the posting to markdown, and saves it to `local/postings/`.
 
 ## Data Storage
 
@@ -183,6 +207,20 @@ local/
 
 This directory is gitignored by default.
 
+## Agent Pipeline
+
+Ghosted includes a multi-agent document generation pipeline for automating job applications:
+
+| Agent | Purpose |
+|-------|---------|
+| **Parser** | Extracts structured JSON from job postings |
+| **Resume Generator** | Creates tailored Typst resumes with skill matching |
+| **Cover Letter Generator** | Generates personalized cover letters |
+| **Reviewer** | Scores documents like a hiring manager (70+ to pass) |
+| **Tracker Integration** | Generates CLI commands to add applications |
+
+Prompt templates are in `internal/agent/prompts/`. See [CLAUDE.md](CLAUDE.md) for integration details.
+
 ## Development
 
 ### Project Structure
@@ -190,6 +228,13 @@ This directory is gitignored by default.
 ```
 ├── main.go                 # Entry point, CLI commands
 ├── internal/
+│   ├── agent/              # Agent pipeline implementation
+│   │   ├── prompts/        # Agent prompt templates (parser, resume, cover, reviewer, tracker)
+│   │   ├── resume.go       # Resume generator agent
+│   │   ├── cover.go        # Cover letter generator agent
+│   │   ├── reviewer.go     # Hiring manager review agent
+│   │   └── tracker.go      # Tracker integration agent
+│   ├── fetch/              # URL fetching and job board parsing
 │   ├── model/
 │   │   └── application.go  # Data structures, status constants
 │   ├── store/
@@ -219,6 +264,10 @@ make clean    # Remove local binary
 - [Bubble Tea](https://github.com/charmbracelet/bubbletea) - TUI framework
 - [Bubbles](https://github.com/charmbracelet/bubbles) - TUI components
 - [Lip Gloss](https://github.com/charmbracelet/lipgloss) - Styling
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for recent updates.
 
 ## License
 
