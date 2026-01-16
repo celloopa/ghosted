@@ -45,7 +45,7 @@ When a user drops a job posting into `local/postings/`, agents will:
 | Status | Task | ID | Notes |
 |--------|------|----|-------|
 | `[x]` | Implement Tracker Integration | `1dd2fb3f-6555-4baf-b7bb-d77056c1968d` | ✅ `tracker.go` + 23 tests |
-| `[ ]` | Add `ghosted apply` CLI command | `b9615c5d-fd52-418c-89da-4bec8c724f83` | User-facing command |
+| `[x]` | Add `ghosted apply` CLI command | `b9615c5d-fd52-418c-89da-4bec8c724f83` | ✅ Implemented with --dry-run, --auto-approve |
 | `[ ]` | Add watch mode for automatic processing | `2cdc1317-ddc0-408b-ab3d-b6fb92e2887b` | Nice-to-have: monitor folder |
 
 ### Phase 4: Agent Automation & Training Data (After Phase 3)
@@ -196,12 +196,14 @@ ghosted watch --auto-approve               # Auto-approve all
 
 ## Current Focus
 
-**Completed:** `ghosted fetch <url>` command - fetches job postings from URLs
+**Completed:**
+- `ghosted fetch <url>` command - fetches job postings from URLs
+- `ghosted apply <posting>` command - runs full pipeline with --dry-run support
 
-**Next task to work on:** Complete Phase 3 first:
-1. `ghosted apply` CLI command (`b9615c5d`) - needs to work before we can add --non-interactive
+**Next task to work on:** Phase 4 improvements:
+1. Add `--non-interactive` flag to ghosted apply (`bdfff0fc`) - for AI agent usage
 
-**Blockers:** `ghosted apply` not yet implemented - required before Phase 4 improvements
+**Blockers:** None - Phase 3 complete!
 
 **Questions/Decisions:**
 - [x] Should agents be Claude Code subagents or Go code with LLM API calls? → **Claude Code subagents**
