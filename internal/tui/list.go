@@ -431,7 +431,7 @@ func (l *ListView) renderHelpDialog() string {
 
 	// Tips
 	b.WriteString("\n")
-	b.WriteString(SubtleStyle.Render("Tip: Press F to fetch a job posting or CV by URL"))
+	b.WriteString(SubtleStyle.Render("Tip: Press f to fetch a job posting or CV by URL"))
 	b.WriteString("\n")
 
 	// Footer

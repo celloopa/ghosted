@@ -140,8 +140,8 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("/", "search"),
 		),
 		Filter: key.NewBinding(
-			key.WithKeys("f"),
-			key.WithHelp("f", "filter"),
+			key.WithKeys("s"),
+			key.WithHelp("s", "filter status"),
 		),
 		Clear: key.NewBinding(
 			key.WithKeys("c"),
@@ -150,8 +150,8 @@ func DefaultKeyMap() KeyMap {
 
 		// Fetch
 		Fetch: key.NewBinding(
-			key.WithKeys("F"),
-			key.WithHelp("F", "fetch URL"),
+			key.WithKeys("f"),
+			key.WithHelp("f", "fetch"),
 		),
 
 		// General
