@@ -1,6 +1,6 @@
 # Multi-Agent Document Generation Pipeline - Progress Tracker
 
-> **Last Updated:** 2026-01-16 (apply, context, compile commands complete)
+> **Last Updated:** 2026-01-16 (cv fetch command complete)
 > **Project:** ghosted
 > **Kanban Project ID:** `b666852b-0ef9-4ee0-8d91-a7f341697897`
 > **GitHub Repo:** `celloopa/ghosted`
@@ -54,6 +54,7 @@ When a user drops a job posting into `local/postings/`, agents will:
 
 | Status | Priority | Task | ID | Notes |
 |--------|----------|------|----|-------|
+| `[x]` | P0 | Add `ghosted cv fetch <website>` command | `715e1484` | ✅ Fetch CV from remote URL |
 | `[ ]` | P0 | Add --non-interactive flag to ghosted apply | `bdfff0fc` | Blocker for AI agent usage |
 | `[ ]` | P1 | Persist intermediate outputs (parsed.json, review.json) | `225c8b1b` | Debugging + training data |
 | `[ ]` | P2 | Add session logging (optional, off by default) | `ae201fb8` | Privacy-first, user opt-in only |
@@ -201,10 +202,10 @@ ghosted watch --auto-approve               # Auto-approve all
 - `ghosted apply <posting>` command - runs full pipeline with --dry-run support
 - `ghosted context` command - outputs context for AI agents (postings, CV, applications)
 - `ghosted compile <id|dir>` command - compiles Typst to PDF and updates tracker
+- `ghosted cv fetch <website>` command - fetches CV from remote websites
 
 **Next task to work on:** Phase 4 improvements:
 1. Add `--non-interactive` flag to ghosted apply (`bdfff0fc`) - for AI agent usage
-2. Add `ghosted cv fetch <website>` command (`715e1484`) - fetch CV from remote URL
 
 **Blockers:** None - Phase 3 complete!
 
@@ -341,6 +342,18 @@ Replace Claude API calls with local model inference:
 ---
 
 ## Completed Work Log
+
+### 2026-01-16: CV Fetch Command
+
+**`ghosted cv fetch <website>` command:**
+- Fetches CV from remote websites (e.g., `ghosted cv fetch cello.design`)
+- Automatically constructs URL as `https://{website}/cv.json`
+- Validates JSON structure before saving
+- Creates timestamped backup of existing cv.json before overwriting
+- Displays name and title from the fetched CV
+- Usage: `ghosted cv fetch cello.design` → `local/cv.json`
+
+---
 
 ### 2026-01-16: Context and Compile Commands
 

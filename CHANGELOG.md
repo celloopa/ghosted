@@ -50,6 +50,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ghosted compile local/applications/swe/acme/
   ```
 
+- **CV Fetch Command** ([#9](https://github.com/celloopa/ghosted/issues/9))
+  - New `ghosted cv fetch <website>` command to fetch CV from remote websites
+  - Automatically constructs URL as `https://<website>/cv.json`
+  - Validates JSON structure before saving
+  - Creates timestamped backup of existing CV before overwriting
+  - Displays name and title from fetched CV
+  ```bash
+  ghosted cv fetch cello.design
+  # Fetches https://cello.design/cv.json → local/cv.json
+  ```
+
 - **TUI Improvements**
   - Help view is now a centered overlay dialog
   - Expanded help with CLI commands and tips

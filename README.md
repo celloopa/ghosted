@@ -121,6 +121,10 @@ ghosted delete abc123
 ghosted fetch https://jobs.lever.co/company/job-id
 ghosted fetch --output acme-swe.md https://example.com/job
 
+# Fetch CV from website
+ghosted cv fetch cello.design
+# Downloads https://cello.design/cv.json → local/cv.json
+
 # Help
 ghosted help
 ```
@@ -142,6 +146,27 @@ ghosted fetch <url>
 - Generic HTML pages
 
 The command extracts company name and position, converts the posting to markdown, and saves it to `local/postings/`.
+
+### CV Fetch Command
+
+Fetch your CV/resume data from a website that hosts a JSON Resume file:
+
+```bash
+ghosted cv fetch <website>
+```
+
+This downloads `https://<website>/cv.json` and saves it to `local/cv.json`. If a CV already exists, a timestamped backup is created before overwriting.
+
+```bash
+ghosted cv fetch cello.design
+# Output:
+# Fetching CV from: https://cello.design/cv.json
+# Backup created: local/cv.backup.2026-01-16-114047.json
+# CV saved to: local/cv.json
+# Size: 9900 bytes
+# Name: Marcelo Rondon
+# Title: Front-End Developer | Designer
+```
 
 ## Data Storage
 
