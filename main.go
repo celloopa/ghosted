@@ -48,6 +48,8 @@ func main() {
 		cmdDelete(s, os.Args[2:])
 	case "fetch":
 		cmdFetch(os.Args[2:])
+	case "context":
+		cmdContext(s)
 	case "upgrade":
 		cmdUpgrade()
 	case "help", "--help", "-h":
@@ -87,6 +89,7 @@ Commands:
   update <id> --json '<json>'  Update application fields
   delete <id>           Delete an application
   fetch <url> [--output name]  Fetch job posting from URL
+  context               Show context for AI agents (postings, CV, applications)
   upgrade               Update ghosted to the latest version
   help                  Show this help
 
@@ -99,7 +102,47 @@ Examples:
   ghosted update abc123 --json '{"status":"interview"}'
   ghosted delete abc123
   ghosted fetch https://jobs.lever.co/company/job-id
-  ghosted fetch --output acme-swe.md https://example.com/job`)
+  ghosted fetch --output acme-swe.md https://example.com/job
+
+─────────────────────────────────────────────────────────────────────────────────
+AI AGENT WORKFLOW
+─────────────────────────────────────────────────────────────────────────────────
+
+Ghosted is designed to work with AI agents (Claude, GPT, etc.) for automated
+job application workflows. Run 'ghosted context' to get all necessary context.
+
+Folder Structure:
+  local/
+  ├── cv.json                          # Your master CV (source of truth)
+  ├── postings/                        # Job postings to process
+  │   └── *.md                         # Fetched or manually added postings
+  └── applications/{job-type}/{company}/
+      ├── posting.md                   # Copy of the job posting
+      ├── resume.typ / resume.pdf      # Generated resume
+      └── cover-letter.typ / .pdf      # Generated cover letter
+
+Job Types: fe-dev, swe, ux-design, product-design
+
+Agent Pipeline:
+  1. Parser      - Extract structured data from job posting
+  2. Resume      - Generate tailored resume (Typst → PDF)
+  3. Cover       - Generate personalized cover letter
+  4. Reviewer    - Score documents (70+ to approve)
+  5. Tracker     - Add application to ghosted
+
+Quick Start for Agents:
+  1. ghosted context                   # Get full context (CV, postings, apps)
+  2. ghosted fetch <url>               # Fetch a job posting
+  3. Read internal/agent/prompts/*.md  # Agent prompt templates
+  4. Generate documents to local/applications/{type}/{company}/
+  5. ghosted add --json '{...}'        # Add to tracker
+
+Prompt Templates: internal/agent/prompts/
+  parser.md   - Job posting parser
+  resume.md   - Resume generator
+  cover.md    - Cover letter generator
+  reviewer.md - Hiring manager reviewer
+  tracker.md  - Tracker integration`)
 }
 
 // cmdAdd adds a new application from JSON input
@@ -449,6 +492,141 @@ func getDataPath() string {
 	}
 
 	return filepath.Join(home, ".local", "share", "ghosted", "applications.json")
+}
+
+// cmdContext outputs context information for AI agents
+func cmdContext(s *store.Store) {
+	fmt.Println(`
+═══════════════════════════════════════════════════════════════════════════════
+                           GHOSTED AGENT CONTEXT
+═══════════════════════════════════════════════════════════════════════════════`)
+
+	// Check for CV
+	fmt.Println("📄 CANDIDATE CV")
+	fmt.Println("───────────────────────────────────────────────────────────────────────────────")
+	cvPath := "local/cv.json"
+	if cvData, err := os.ReadFile(cvPath); err == nil {
+		fmt.Println("Path: local/cv.json")
+		fmt.Println("Content:")
+		fmt.Println(string(cvData))
+	} else {
+		fmt.Println("⚠️  No CV found at local/cv.json")
+		fmt.Println("   Create this file with your master resume data in JSON format.")
+		fmt.Println(`   Example: {"name": "Your Name", "email": "...", "experience": [...]}`)
+	}
+	fmt.Println()
+
+	// List postings
+	fmt.Println("📬 PENDING POSTINGS")
+	fmt.Println("───────────────────────────────────────────────────────────────────────────────")
+	postingsDir := "local/postings"
+	if entries, err := os.ReadDir(postingsDir); err == nil {
+		count := 0
+		for _, entry := range entries {
+			if !entry.IsDir() && (filepath.Ext(entry.Name()) == ".md" || filepath.Ext(entry.Name()) == ".txt") {
+				count++
+				fmt.Printf("  • %s/%s\n", postingsDir, entry.Name())
+			}
+		}
+		if count == 0 {
+			fmt.Println("  (no postings found)")
+		}
+		fmt.Printf("\nTo add a posting: ghosted fetch <url>\n")
+	} else {
+		fmt.Println("  (local/postings directory not found)")
+		fmt.Println("  Create it with: mkdir -p local/postings")
+	}
+	fmt.Println()
+
+	// List applications by job type
+	fmt.Println("📁 APPLICATIONS BY JOB TYPE")
+	fmt.Println("───────────────────────────────────────────────────────────────────────────────")
+	appsDir := "local/applications"
+	jobTypes := []string{"fe-dev", "swe", "ux-design", "product-design"}
+	foundAny := false
+	for _, jobType := range jobTypes {
+		typeDir := filepath.Join(appsDir, jobType)
+		if entries, err := os.ReadDir(typeDir); err == nil {
+			companies := []string{}
+			for _, entry := range entries {
+				if entry.IsDir() {
+					companies = append(companies, entry.Name())
+				}
+			}
+			if len(companies) > 0 {
+				foundAny = true
+				fmt.Printf("\n  %s/\n", jobType)
+				for _, company := range companies {
+					fmt.Printf("    └── %s/\n", company)
+					// List files in company folder
+					companyDir := filepath.Join(typeDir, company)
+					if files, err := os.ReadDir(companyDir); err == nil {
+						for _, f := range files {
+							if !f.IsDir() {
+								fmt.Printf("        • %s\n", f.Name())
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	if !foundAny {
+		fmt.Println("  (no applications yet)")
+		fmt.Println("  Structure: local/applications/{job-type}/{company}/")
+	}
+	fmt.Println()
+
+	// Show tracker entries
+	fmt.Println("📊 TRACKER ENTRIES")
+	fmt.Println("───────────────────────────────────────────────────────────────────────────────")
+	apps := s.List()
+	if len(apps) == 0 {
+		fmt.Println("  (no applications in tracker)")
+	} else {
+		// Group by status
+		byStatus := make(map[string][]model.Application)
+		for _, app := range apps {
+			byStatus[app.Status] = append(byStatus[app.Status], app)
+		}
+		for _, status := range model.AllStatuses() {
+			if statusApps, ok := byStatus[status]; ok && len(statusApps) > 0 {
+				fmt.Printf("\n  %s (%d)\n", model.StatusLabel(status), len(statusApps))
+				for _, app := range statusApps {
+					fmt.Printf("    [%s] %s @ %s\n", app.ID[:8], app.Position, app.Company)
+				}
+			}
+		}
+	}
+	fmt.Println()
+
+	// Show prompt templates
+	fmt.Println("📝 AGENT PROMPTS")
+	fmt.Println("───────────────────────────────────────────────────────────────────────────────")
+	promptsDir := "internal/agent/prompts"
+	prompts := []struct {
+		file string
+		desc string
+	}{
+		{"parser.md", "Extract structured JSON from job postings"},
+		{"resume.md", "Generate tailored Typst resumes"},
+		{"cover.md", "Generate personalized cover letters"},
+		{"reviewer.md", "Score documents (70+ to approve)"},
+		{"tracker.md", "Generate ghosted CLI commands"},
+	}
+	for _, p := range prompts {
+		path := filepath.Join(promptsDir, p.file)
+		if _, err := os.Stat(path); err == nil {
+			fmt.Printf("  ✓ %s - %s\n", path, p.desc)
+		} else {
+			fmt.Printf("  ✗ %s (not found)\n", path)
+		}
+	}
+	fmt.Println()
+
+	fmt.Println(`═══════════════════════════════════════════════════════════════════════════════
+WORKFLOW: fetch posting → parse → generate resume/cover → review → add to tracker
+═══════════════════════════════════════════════════════════════════════════════`)
 }
 
 // cmdUpgrade updates ghosted to the latest version
