@@ -3,10 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/celloopa/ghosted/internal/agent"
@@ -55,6 +58,8 @@ func main() {
 		cmdApply(s, os.Args[2:])
 	case "upgrade":
 		cmdUpgrade()
+	case "cv":
+		cmdCV(os.Args[2:])
 	case "help", "--help", "-h":
 		printHelp()
 	default:
@@ -94,6 +99,7 @@ Commands:
   fetch <url> [--output name]  Fetch job posting from URL
   apply <posting> [flags]      Run full pipeline on a job posting
   context               Show context for AI agents (postings, CV, applications)
+  cv fetch <website>    Fetch CV from website (downloads https://<website>/cv.json)
   upgrade               Update ghosted to the latest version
   help                  Show this help
 
@@ -110,6 +116,7 @@ Examples:
   ghosted apply local/postings/acme-swe.md
   ghosted apply --dry-run local/postings/test.md
   ghosted apply --auto-approve local/postings/acme-swe.md
+  ghosted cv fetch cello.design
 
 Apply Command Flags:
   --dry-run       Generate documents without adding to tracker
@@ -758,4 +765,143 @@ func cmdUpgrade() {
 		binPath += ".exe"
 	}
 	fmt.Printf("Installed to: %s\n", binPath)
+}
+
+// cmdCV handles the cv subcommands
+func cmdCV(args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: ghosted cv <command>")
+		fmt.Fprintln(os.Stderr, "Commands:")
+		fmt.Fprintln(os.Stderr, "  fetch <website>  Fetch CV from website (downloads https://<website>/cv.json)")
+		os.Exit(1)
+	}
+
+	switch args[0] {
+	case "fetch":
+		cmdCVFetch(args[1:])
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown cv command: %s\n", args[0])
+		fmt.Fprintln(os.Stderr, "Available commands: fetch")
+		os.Exit(1)
+	}
+}
+
+// cmdCVFetch fetches a CV from a website
+func cmdCVFetch(args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: ghosted cv fetch <website>")
+		fmt.Fprintln(os.Stderr, "Example: ghosted cv fetch cello.design")
+		fmt.Fprintln(os.Stderr, "         This fetches https://cello.design/cv.json")
+		os.Exit(1)
+	}
+
+	website := args[0]
+
+	// Remove any protocol prefix if provided
+	website = strings.TrimPrefix(website, "https://")
+	website = strings.TrimPrefix(website, "http://")
+	website = strings.TrimSuffix(website, "/")
+
+	// Construct the URL
+	cvURL := fmt.Sprintf("https://%s/cv.json", website)
+
+	fmt.Printf("Fetching CV from: %s\n", cvURL)
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	// Create request
+	req, err := http.NewRequest("GET", cvURL, nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating request: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Set headers
+	req.Header.Set("User-Agent", "ghosted/1.0 (CV fetcher)")
+	req.Header.Set("Accept", "application/json")
+
+	// Fetch the CV
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error fetching CV: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "Error: HTTP %d - %s\n", resp.StatusCode, resp.Status)
+		if resp.StatusCode == 404 {
+			fmt.Fprintln(os.Stderr, "The cv.json file was not found on the website.")
+			fmt.Fprintln(os.Stderr, "Make sure the website hosts a cv.json file at the root.")
+		}
+		os.Exit(1)
+	}
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading response: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Validate JSON
+	var cvData interface{}
+	if err := json.Unmarshal(body, &cvData); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Invalid JSON from %s\n", cvURL)
+		fmt.Fprintf(os.Stderr, "JSON parse error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Pretty-print the JSON for storage
+	prettyJSON, err := json.MarshalIndent(cvData, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error formatting JSON: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Ensure local directory exists
+	localDir := "local"
+	if err := os.MkdirAll(localDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating local directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Check if cv.json already exists and create backup
+	cvPath := filepath.Join(localDir, "cv.json")
+	if _, err := os.Stat(cvPath); err == nil {
+		backupPath := filepath.Join(localDir, fmt.Sprintf("cv.backup.%s.json", time.Now().Format("2006-01-02-150405")))
+		if existingData, err := os.ReadFile(cvPath); err == nil {
+			if err := os.WriteFile(backupPath, existingData, 0644); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Could not create backup: %v\n", err)
+			} else {
+				fmt.Printf("Backup created: %s\n", backupPath)
+			}
+		}
+	}
+
+	// Write the CV
+	if err := os.WriteFile(cvPath, prettyJSON, 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing cv.json: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("CV saved to: %s\n", cvPath)
+	fmt.Printf("Size: %d bytes\n", len(prettyJSON))
+
+	// Try to show some basic info from the CV
+	if cvMap, ok := cvData.(map[string]interface{}); ok {
+		if basics, ok := cvMap["basics"].(map[string]interface{}); ok {
+			if name, ok := basics["name"].(string); ok && name != "" {
+				fmt.Printf("Name: %s\n", name)
+			}
+			if label, ok := basics["label"].(string); ok && label != "" {
+				fmt.Printf("Title: %s\n", label)
+			}
+		}
+	}
+
+	fmt.Println("\nCV is ready for use with ghosted apply.")
 }
