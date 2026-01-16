@@ -353,6 +353,8 @@ func (l *ListView) renderShortHelp() string {
 
 func (l *ListView) renderFullHelp() string {
 	var b strings.Builder
+
+	// Keyboard shortcuts section
 	b.WriteString(SectionStyle.Render("Keyboard Shortcuts"))
 	b.WriteString("\n\n")
 
@@ -368,6 +370,49 @@ func (l *ListView) renderFullHelp() string {
 		b.WriteString(strings.Join(parts, "  "))
 		b.WriteString("\n")
 	}
+
+	// Status keys
+	b.WriteString("\n")
+	b.WriteString(SectionStyle.Render("Status Keys"))
+	b.WriteString("\n\n")
+	statusKeys := []string{
+		HelpKeyStyle.Render("1") + " " + HelpDescStyle.Render("saved"),
+		HelpKeyStyle.Render("2") + " " + HelpDescStyle.Render("applied"),
+		HelpKeyStyle.Render("3") + " " + HelpDescStyle.Render("screening"),
+		HelpKeyStyle.Render("4") + " " + HelpDescStyle.Render("interview"),
+		HelpKeyStyle.Render("5") + " " + HelpDescStyle.Render("offer"),
+		HelpKeyStyle.Render("6") + " " + HelpDescStyle.Render("accepted"),
+		HelpKeyStyle.Render("7") + " " + HelpDescStyle.Render("rejected"),
+		HelpKeyStyle.Render("8") + " " + HelpDescStyle.Render("withdrawn"),
+	}
+	b.WriteString(strings.Join(statusKeys, "  "))
+	b.WriteString("\n")
+
+	// CLI commands section
+	b.WriteString("\n")
+	b.WriteString(SectionStyle.Render("CLI Commands"))
+	b.WriteString("\n\n")
+	cliCmds := []string{
+		HelpKeyStyle.Render("ghosted") + " " + HelpDescStyle.Render("launch TUI"),
+		HelpKeyStyle.Render("ghosted list") + " " + HelpDescStyle.Render("list apps"),
+		HelpKeyStyle.Render("ghosted fetch <url>") + " " + HelpDescStyle.Render("fetch posting"),
+		HelpKeyStyle.Render("ghosted add --json '{...}'") + " " + HelpDescStyle.Render("add app"),
+	}
+	b.WriteString(strings.Join(cliCmds, "\n"))
+	b.WriteString("\n")
+
+	// Tips section
+	b.WriteString("\n")
+	b.WriteString(SectionStyle.Render("Tips"))
+	b.WriteString("\n\n")
+	tips := []string{
+		SubtleStyle.Render("• Use") + " " + HelpKeyStyle.Render("ghosted fetch <url>") + " " + SubtleStyle.Render("to save job postings from Lever, Greenhouse, LinkedIn"),
+		SubtleStyle.Render("• Job postings saved to") + " " + HelpKeyStyle.Render("local/postings/"),
+		SubtleStyle.Render("• Run") + " " + HelpKeyStyle.Render("ghosted help") + " " + SubtleStyle.Render("for full CLI documentation"),
+		SubtleStyle.Render("• Run") + " " + HelpKeyStyle.Render("ghosted upgrade") + " " + SubtleStyle.Render("to update to latest version"),
+	}
+	b.WriteString(strings.Join(tips, "\n"))
+	b.WriteString("\n")
 
 	return b.String()
 }
