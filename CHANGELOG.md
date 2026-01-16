@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.1-beta] - 2026-01-16
+
+### Changed
+
+- **Documentation Update** - Consolidated fetch command docs
+  - README now documents unified `ghosted fetch` for both job postings and CVs
+  - Removed separate "CV Fetch Command" section (functionality still works via unified command)
+  - Legacy `ghosted cv fetch` still works for backwards compatibility
+
 ### Added
 
 - **Clipboard Copy for Claude Prompt** (TUI)
@@ -83,16 +92,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ghosted compile local/applications/swe/acme/
   ```
 
-- **CV Fetch Command** ([#9](https://github.com/celloopa/ghosted/issues/9))
-  - New `ghosted cv fetch <website>` command to fetch CV from remote websites
-  - Automatically constructs URL as `https://<website>/cv.json`
+- **CV Fetch** ([#9](https://github.com/celloopa/ghosted/issues/9))
+  - CV fetching is now part of the unified `ghosted fetch` command (see above)
   - Validates JSON structure before saving
   - Creates timestamped backup of existing CV before overwriting
   - Displays name and title from fetched CV
-  ```bash
-  ghosted cv fetch cello.design
-  # Fetches https://cello.design/cv.json → local/cv.json
-  ```
+  - Legacy `ghosted cv fetch <website>` still works for backwards compatibility
 
 - **TUI Improvements**
   - Help view is now a centered overlay dialog

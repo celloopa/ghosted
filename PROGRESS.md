@@ -1,6 +1,6 @@
 # Multi-Agent Document Generation Pipeline - Progress Tracker
 
-> **Last Updated:** 2026-01-16 (TUI clipboard copy + filename validation)
+> **Last Updated:** 2026-01-16 (Unified fetch command documentation)
 > **Project:** ghosted
 > **Kanban Project ID:** `b666852b-0ef9-4ee0-8d91-a7f341697897`
 > **GitHub Repo:** `celloopa/ghosted`
@@ -209,7 +209,7 @@ ghosted watch --auto-approve               # Auto-approve all
 - `ghosted apply <posting>` command - runs full pipeline with --dry-run support
 - `ghosted context` command - outputs context for AI agents (postings, CV, applications)
 - `ghosted compile <id|dir>` command - compiles Typst to PDF and updates tracker
-- `ghosted cv fetch <website>` command - fetches CV from remote websites
+- Documentation updated to reflect unified fetch (legacy `ghosted cv fetch` still works)
 
 **Next task:**
 - Add `--non-interactive` flag to ghosted apply (`bdfff0fc`) - for AI agent usage
@@ -349,6 +349,21 @@ Replace Claude API calls with local model inference:
 ---
 
 ## Completed Work Log
+
+### 2026-01-16: Unified Fetch Command Documentation
+
+Updated documentation to reflect the unified `ghosted fetch` command that auto-detects job postings vs CVs.
+
+**Files modified:**
+- `README.md` - Removed separate "CV Fetch Command" section, updated CLI examples
+- `CHANGELOG.md` - Updated CV Fetch entry to reference unified fetch command
+
+**Changes:**
+- `ghosted fetch cello.design` now documented as the primary way to fetch CVs
+- Legacy `ghosted cv fetch <website>` still works for backwards compatibility
+- Single "Fetch Command" section in README covers both use cases
+
+---
 
 ### 2026-01-16: TUI Clipboard Copy for Claude Prompt
 

@@ -118,13 +118,10 @@ ghosted update abc123 --json '{"status":"interview","notes":"Phone screen schedu
 # Delete application
 ghosted delete abc123
 
-# Fetch job posting from URL
+# Fetch job posting or CV (auto-detects)
 ghosted fetch https://jobs.lever.co/company/job-id
+ghosted fetch cello.design  # Fetches CV from domain/cv.json
 ghosted fetch --output acme-swe.md https://example.com/job
-
-# Fetch CV from website
-ghosted cv fetch cello.design
-# Downloads https://cello.design/cv.json → local/cv.json
 
 # Help
 ghosted help
@@ -160,27 +157,6 @@ ghosted fetch https://example.com/cv.json     # Explicit CV URL
 Job postings are converted to markdown and saved to `local/postings/`.
 
 You can also fetch from within the TUI by pressing `f`.
-
-### CV Fetch Command
-
-Fetch your CV/resume data from a website that hosts a JSON Resume file:
-
-```bash
-ghosted cv fetch <website>
-```
-
-This downloads `https://<website>/cv.json` and saves it to `local/cv.json`. If a CV already exists, a timestamped backup is created before overwriting.
-
-```bash
-ghosted cv fetch cello.design
-# Output:
-# Fetching CV from: https://cello.design/cv.json
-# Backup created: local/cv.backup.2026-01-16-114047.json
-# CV saved to: local/cv.json
-# Size: 9900 bytes
-# Name: Marcelo Rondon
-# Title: Front-End Developer | Designer
-```
 
 ## Data Storage
 
