@@ -1,6 +1,6 @@
 # Multi-Agent Document Generation Pipeline - Progress Tracker
 
-> **Last Updated:** 2026-01-16 (agents completed)
+> **Last Updated:** 2026-01-16 (apply, context, compile commands complete)
 > **Project:** ghosted
 > **Kanban Project ID:** `b666852b-0ef9-4ee0-8d91-a7f341697897`
 > **GitHub Repo:** `celloopa/ghosted`
@@ -199,9 +199,12 @@ ghosted watch --auto-approve               # Auto-approve all
 **Completed:**
 - `ghosted fetch <url>` command - fetches job postings from URLs
 - `ghosted apply <posting>` command - runs full pipeline with --dry-run support
+- `ghosted context` command - outputs context for AI agents (postings, CV, applications)
+- `ghosted compile <id|dir>` command - compiles Typst to PDF and updates tracker
 
 **Next task to work on:** Phase 4 improvements:
 1. Add `--non-interactive` flag to ghosted apply (`bdfff0fc`) - for AI agent usage
+2. Add `ghosted cv fetch <website>` command (`715e1484`) - fetch CV from remote URL
 
 **Blockers:** None - Phase 3 complete!
 
@@ -338,6 +341,29 @@ Replace Claude API calls with local model inference:
 ---
 
 ## Completed Work Log
+
+### 2026-01-16: Context and Compile Commands
+
+**`ghosted context` command:**
+- Outputs all context needed for AI-assisted workflows
+- Shows pending postings in `local/postings/`
+- Displays CV data from `local/cv.json`
+- Lists current applications organized by status
+- Shows available agent prompt templates
+- Usage: `ghosted context`
+
+**`ghosted compile <id|dir>` command:**
+- Compiles .typ files (resume.typ, cover-letter.typ) to PDF
+- Accepts application ID or directory path
+- Automatically updates tracker with resume_version and cover_letter
+- Opens output folder after compilation (macOS: `open`, Linux: `xdg-open`)
+- Usage: `ghosted compile abc123` or `ghosted compile local/applications/swe/acme/`
+
+**TUI Improvements:**
+- Help view is now a centered overlay dialog
+- Expanded help with CLI commands and tips
+
+---
 
 ### 2026-01-16: All Core Agents Implemented (Tasks 1-4)
 

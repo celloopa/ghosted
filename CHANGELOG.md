@@ -26,6 +26,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Tracker Integration Agent with store integration and job type detection
   - 67 comprehensive tests covering all agent functionality
 
+- **Apply Command** - Full pipeline CLI command
+  - New `ghosted apply <posting>` runs the complete document generation pipeline
+  - Parser → Resume → Cover Letter → Reviewer → Tracker integration
+  - Flags: `--dry-run` (generate without tracking), `--auto-approve` (skip review)
+  ```bash
+  ghosted apply local/postings/acme-swe.md
+  ghosted apply --dry-run local/postings/test.md
+  ghosted apply --auto-approve local/postings/acme-swe.md
+  ```
+
+- **Context Command** - AI agent context dump
+  - New `ghosted context` outputs all context needed for AI-assisted workflows
+  - Shows pending postings, CV data, current applications, and agent prompts
+  - Organized by job type folders with file listings
+
+- **Compile Command** - Typst compilation with tracker update
+  - New `ghosted compile <id|dir>` compiles .typ files to PDF
+  - Automatically updates tracker with resume/cover letter references
+  - Opens output folder after compilation
+  ```bash
+  ghosted compile abc123
+  ghosted compile local/applications/swe/acme/
+  ```
+
+- **TUI Improvements**
+  - Help view is now a centered overlay dialog
+  - Expanded help with CLI commands and tips
+
 - **Agent Prompt Templates** ([#8](https://github.com/celloopa/ghosted/pull/8))
   - 5 agent prompt templates for the multi-agent document generation pipeline
   - Prompts located in `internal/agent/prompts/`:
