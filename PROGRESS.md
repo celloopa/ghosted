@@ -341,27 +341,35 @@ Replace Claude API calls with local model inference:
 
 ## Completed Work Log
 
-### 2026-01-16: Unified Fetch Command
+### 2026-01-16: Unified Fetch Command + TUI Fetch View
 
 Merged job posting fetch and CV fetch into a single `ghosted fetch` command with auto-detection.
+Also added a TUI fetch view accessible via 'F' key.
 
 **Files created/modified:**
 - `internal/fetch/fetcher.go` - Added `FetchType` enum and `DetectFetchType()` function
 - `internal/fetch/cv.go` - New CV fetcher with JSON Resume support
 - `internal/fetch/cv_test.go` - 8 tests for CV fetching and detection
 - `main.go` - Unified `cmdFetch()` to handle both types
+- `internal/tui/fetch.go` - New FetchView with URL input and async fetch
+- `internal/tui/keys.go` - Added 'F' key binding
+- `internal/tui/app.go` - Added ViewFetch state
+- `internal/tui/list.go` - Added fetch action
 
 **Detection rules:**
 - Bare domain (`cello.design`) → CV fetch to `local/cv.json`
 - Explicit `/cv.json` path → CV fetch
 - Any URL with path → Job posting fetch to `local/postings/`
 
-**Usage:**
+**Usage (CLI):**
 ```bash
 ghosted fetch https://jobs.lever.co/company/123  # Job posting
 ghosted fetch cello.design                       # CV from domain/cv.json
 ghosted fetch https://example.com/cv.json        # CV from explicit URL
 ```
+
+**Usage (TUI):**
+Press 'F' from the list view to open the fetch dialog.
 
 ---
 

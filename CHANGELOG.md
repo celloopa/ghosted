@@ -17,6 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **CV fetch**: Bare domain or `/cv.json` path → saves to `local/cv.json`
     - Fetches JSON Resume format from `{domain}/cv.json`
     - Extracts name and label from JSON Resume basics
+  - **TUI fetch view**: Press `F` from the list view to fetch via the TUI
+    - URL input with auto-detection
+    - Async fetch with loading state and result display
   ```bash
   ghosted fetch https://jobs.lever.co/company/job-id   # Job posting
   ghosted fetch cello.design                           # CV from domain/cv.json
