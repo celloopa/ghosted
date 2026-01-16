@@ -531,7 +531,11 @@ func fetchJobPosting(urlArg string, outputName string) {
 
 	result, err := f.Fetch(urlArg, outputName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error fetching URL: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		// Check if this is a filename generation error and provide example
+		if strings.Contains(err.Error(), "--output") {
+			fmt.Fprintf(os.Stderr, "\nExample:\n  ghosted fetch --output company-position %s\n", urlArg)
+		}
 		os.Exit(1)
 	}
 

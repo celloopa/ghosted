@@ -131,7 +131,11 @@ func (f *Fetcher) Fetch(rawURL string, outputName string) (*FetchResult, error) 
 
 	// Generate output filename
 	if outputName == "" {
-		outputName = f.GenerateFilename(company, position, parsedURL)
+		var err error
+		outputName, err = f.GenerateFilename(company, position, parsedURL)
+		if err != nil {
+			return nil, fmt.Errorf("%w; use --output to specify a filename (e.g., --output company-position)", err)
+		}
 	}
 	if !strings.HasSuffix(outputName, ".md") {
 		outputName += ".md"
@@ -459,6 +463,127 @@ func isNumeric(s string) bool {
 	return true
 }
 
+// isHexString checks if a string contains only hexadecimal characters
+func isHexString(s string) bool {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) {
+			return false
+		}
+	}
+	return true
+}
+
+// looksLikeID checks if a string looks like an ID (numeric, UUID, or hex hash)
+func looksLikeID(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+
+	// Pure numeric strings are IDs
+	if isNumeric(s) {
+		return true
+	}
+
+	// UUID pattern (with or without dashes)
+	uuidNoDashes := regexp.MustCompile(`^[0-9a-fA-F]{32}$`)
+	uuidWithDashes := regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	if uuidNoDashes.MatchString(s) || uuidWithDashes.MatchString(s) {
+		return true
+	}
+
+	// Long hex strings (likely hashes) - 16+ hex chars
+	if len(s) >= 16 && isHexString(s) {
+		return true
+	}
+
+	return false
+}
+
+// ValidateFilename checks if a generated filename is acceptable
+// Returns an error if the filename looks like an ID or is otherwise unsuitable
+func ValidateFilename(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("empty filename")
+	}
+
+	// Remove common suffixes for validation
+	name = strings.TrimSuffix(name, "-posting")
+	name = strings.TrimSuffix(name, ".md")
+
+	if looksLikeID(name) {
+		return fmt.Errorf("filename '%s' looks like an ID rather than a descriptive name", name)
+	}
+
+	return nil
+}
+
+// extractCleanHostname extracts a company name from a hostname
+// e.g., "careers.microsoft.com" -> "microsoft"
+// e.g., "jobs.lever.co" -> "lever"
+// e.g., "apply.workday.com" -> "workday"
+func extractCleanHostname(host string) string {
+	host = strings.ToLower(host)
+
+	// Remove www. prefix
+	host = strings.TrimPrefix(host, "www.")
+
+	// Split by dots
+	parts := strings.Split(host, ".")
+	if len(parts) < 2 {
+		return sanitizeFilename(host)
+	}
+
+	// Known job board domains where we want the company from subdomain
+	jobBoards := map[string]bool{
+		"lever.co":       true,
+		"greenhouse.io":  true,
+		"workday.com":    true,
+		"ashbyhq.com":    true,
+		"smartrecruiters.com": true,
+		"bamboohr.com":   true,
+		"icims.com":      true,
+	}
+
+	// Check if it's a known job board (use last 2 parts as domain)
+	if len(parts) >= 2 {
+		domain := parts[len(parts)-2] + "." + parts[len(parts)-1]
+		if jobBoards[domain] && len(parts) >= 3 {
+			// Return the subdomain (company name)
+			subdomain := parts[len(parts)-3]
+			if subdomain != "jobs" && subdomain != "careers" && subdomain != "apply" {
+				return sanitizeFilename(subdomain)
+			}
+		}
+	}
+
+	// For company career sites like careers.microsoft.com or apply.careers.microsoft.com
+	// Find the main domain (skip common prefixes)
+	prefixes := map[string]bool{
+		"careers": true,
+		"jobs":    true,
+		"apply":   true,
+		"hire":    true,
+		"work":    true,
+	}
+
+	// Find the first non-prefix part (working from the end, before TLD)
+	for i := len(parts) - 2; i >= 0; i-- {
+		part := parts[i]
+		if !prefixes[part] && len(part) > 2 {
+			return sanitizeFilename(part)
+		}
+	}
+
+	// Fallback: use the second-to-last part (main domain name)
+	return sanitizeFilename(parts[len(parts)-2])
+}
+
 // extractGeneric extracts job posting from any HTML page
 func (f *Fetcher) extractGeneric(html string) (content, company, position string) {
 	// Try common meta tags
@@ -497,28 +622,64 @@ func (f *Fetcher) extractGeneric(html string) (content, company, position string
 }
 
 // GenerateFilename creates a filename from company and position
-func (f *Fetcher) GenerateFilename(company, position string, parsedURL *url.URL) string {
-	// Use company and position if available
+// Returns an error if no valid descriptive filename can be generated
+func (f *Fetcher) GenerateFilename(company, position string, parsedURL *url.URL) (string, error) {
+	hostname := extractCleanHostname(parsedURL.Host)
+	dateStr := time.Now().Format("2006-01-02")
+
+	// Fallback 1: Company + Position (best case)
 	if company != "" && position != "" {
-		return sanitizeFilename(company) + "-" + sanitizeFilename(position) + "-posting"
+		name := sanitizeFilename(company) + "-" + sanitizeFilename(position) + "-posting"
+		if err := ValidateFilename(name); err == nil {
+			return name, nil
+		}
 	}
 
-	// Fall back to using the URL path
+	// Fallback 2: Position + hostname (e.g., "engineer-at-microsoft-posting")
+	if position != "" && hostname != "" {
+		name := sanitizeFilename(position) + "-at-" + hostname + "-posting"
+		if err := ValidateFilename(name); err == nil {
+			return name, nil
+		}
+	}
+
+	// Fallback 3: Company + date
+	if company != "" {
+		name := sanitizeFilename(company) + "-" + dateStr + "-posting"
+		if err := ValidateFilename(name); err == nil {
+			return name, nil
+		}
+	}
+
+	// Fallback 4: Hostname + date
+	if hostname != "" {
+		name := hostname + "-" + dateStr + "-posting"
+		if err := ValidateFilename(name); err == nil {
+			return name, nil
+		}
+	}
+
+	// Fallback 5: Try URL path segment (only if it passes validation)
 	path := parsedURL.Path
 	path = strings.Trim(path, "/")
 	parts := strings.Split(path, "/")
 
 	if len(parts) > 0 {
 		// Use last meaningful part of path
-		name := parts[len(parts)-1]
-		if name == "" && len(parts) > 1 {
-			name = parts[len(parts)-2]
+		pathName := parts[len(parts)-1]
+		if pathName == "" && len(parts) > 1 {
+			pathName = parts[len(parts)-2]
 		}
-		return sanitizeFilename(name) + "-posting"
+		if pathName != "" {
+			name := sanitizeFilename(pathName) + "-posting"
+			if err := ValidateFilename(name); err == nil {
+				return name, nil
+			}
+		}
 	}
 
-	// Last resort: use host
-	return sanitizeFilename(parsedURL.Host) + "-posting"
+	// If all fallbacks failed, return an error
+	return "", fmt.Errorf("could not generate a descriptive filename from the URL")
 }
 
 // FormatOutput creates the final markdown output with metadata
