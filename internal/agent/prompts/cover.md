@@ -8,32 +8,47 @@ Locate these files in the ghosted repository:
 
 | Data | Path | Description |
 |------|------|-------------|
-| **Candidate CV** | `local/resumes/cv.json` | Source of truth for experience and background |
-| **Job Postings** | `local/postings/*.md` | Raw job posting text with company info |
-| **Generated Resume** | `local/document-generation/{job-type}/resume-*.typ` | The tailored resume (for consistency) |
-| **Existing Cover Letters** | `local/document-generation/{job-type}/cover-letter-*.typ` | Reference for tone and structure |
+| **Candidate CV** | `local/cv.json` | Source of truth for experience and background |
+| **Incoming Postings** | `local/postings/*.md` | New job postings to process |
+| **Applications** | `local/applications/{job-type}/{company}/` | All files for one application |
+| **Base Templates** | `local/document-generation/*.typ` | Typst templates |
 
-### Folder Structure by Job Type
+### Folder Structure
 
-Place cover letters in the same folder as their matching resume:
+All files for a single application are grouped together by job type:
 
 ```
-local/document-generation/
-├── fe-dev/           # Front-End Developer roles
-├── swe/              # General Software Engineer roles
-├── ux-design/        # UX/UI Designer roles
-├── product-design/   # Product Designer roles
-└── coverletter.typ   # Base template (stays at root)
+local/
+├── cv.json                              # Source of truth
+├── postings/                            # Incoming/unprocessed postings
+│   └── {company}-{role}-posting.md
+├── applications/                        # Processed applications
+│   ├── fe-dev/
+│   │   └── figma-ec_swe/
+│   │       ├── posting.md               # Copy of original posting
+│   │       ├── resume.typ
+│   │       ├── resume.pdf
+│   │       ├── cover-letter.typ
+│   │       └── cover-letter.pdf
+│   ├── swe/
+│   ├── ux-design/
+│   └── product-design/
+└── document-generation/
+    └── coverletter.typ                  # Base template
 ```
 
 ### File Naming Convention
 
-Cover letters go in the job-type folder with their matching resume: `{job-type}/cover-letter-{company}-{role}.typ`
+Within each application folder, use simplified names:
+- `cover-letter.typ` / `cover-letter.pdf` - Cover letter
+- `resume.typ` - Matching resume (for consistency reference)
+
+Application folders: `local/applications/{job-type}/{company}/`
 
 Examples:
-- `fe-dev/cover-letter-figma-ec_swe.typ`
-- `swe/cover-letter-twitch-swe.typ`
-- `ux-design/cover-letter-spotify-ux.typ`
+- `local/applications/fe-dev/figma-ec_swe/cover-letter.typ`
+- `local/applications/swe/twitch-swe/cover-letter.typ`
+- `local/applications/ux-design/spotify-ux/cover-letter.typ`
 
 ### Using cv.json
 
@@ -46,7 +61,7 @@ Reference the CV for:
 
 ### Using the Generated Resume
 
-Read the matching `resume-{company}-{role}.typ` to:
+Read the matching `resume.typ` in the same application folder to:
 - Use consistent language and terminology
 - Reference the same key experiences
 - Avoid repeating the resume verbatim (expand on 2-3 highlights instead)

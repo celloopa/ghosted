@@ -8,14 +8,26 @@ Locate these files in the ghosted repository:
 
 | Data | Path | Description |
 |------|------|-------------|
-| **Job Posting** | `local/postings/*.md` | Source for company, position, salary info |
-| **Generated Resume** | `local/document-generation/{job-type}/resume-*.typ` | Resume file to reference |
-| **Generated Cover Letter** | `local/document-generation/{job-type}/cover-letter-*.typ` | Cover letter to reference |
-| **Compiled PDFs** | `local/document-generation/{job-type}/*.pdf` | Final documents |
+| **Candidate CV** | `local/cv.json` | Source of truth |
+| **Incoming Postings** | `local/postings/*.md` | New job postings to process |
+| **Applications** | `local/applications/{job-type}/{company}/` | All files for one application |
+
+### Application Folder Structure
+
+Each application folder contains all related files:
+
+```
+local/applications/{job-type}/{company}/
+├── posting.md           # Copy of original posting
+├── resume.typ           # Source file
+├── resume.pdf           # Compiled resume
+├── cover-letter.typ     # Source file
+└── cover-letter.pdf     # Compiled cover letter
+```
 
 ### Job Type Folders
 
-Documents are organized by role category:
+Applications are organized by role category:
 - `fe-dev/` - Front-End Developer roles
 - `swe/` - General Software Engineer roles
 - `ux-design/` - UX/UI Designer roles
@@ -23,13 +35,13 @@ Documents are organized by role category:
 
 ### Document Path Mapping
 
-When adding to tracker, include the job-type folder:
-- `resume_version`: `"{job-type}/resume-{company}-{role}.pdf"`
-- `cover_letter`: `"{job-type}/cover-letter-{company}-{role}.pdf"`
+When adding to tracker, use the application folder path:
+- `resume_version`: `"applications/{job-type}/{company}/resume.pdf"`
+- `cover_letter`: `"applications/{job-type}/{company}/cover-letter.pdf"`
 
 Examples:
-- `"fe-dev/resume-figma-ec_swe.pdf"`
-- `"swe/cover-letter-twitch-swe.pdf"`
+- `"applications/fe-dev/figma-ec_swe/resume.pdf"`
+- `"applications/swe/twitch-swe/cover-letter.pdf"`
 
 ## Input
 
@@ -101,11 +113,11 @@ Key requirements: 5+ years experience, distributed systems, AWS
 
 ## File Organization
 
-After creating the tracker entry, organize files:
+After creating the tracker entry, the posting has already been copied to the application folder:
 
-1. **Move processed posting** to `local/postings/processed/`
-2. **Keep generated documents** in `local/resumes/` and `local/cover-letters/`
-3. **Naming convention**: `{company}-{position}.pdf` (lowercase, hyphenated)
+1. **Posting** is at `local/applications/{job-type}/{company}/posting.md`
+2. **Generated documents** are in the same application folder
+3. **Original posting** in `local/postings/` can be archived or deleted
 
 ## Output Commands
 

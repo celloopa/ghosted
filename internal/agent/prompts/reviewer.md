@@ -8,14 +8,26 @@ Locate these files in the ghosted repository:
 
 | Data | Path | Description |
 |------|------|-------------|
-| **Job Posting** | `local/postings/*.md` | Original requirements to evaluate against |
-| **Candidate CV** | `local/resumes/cv.json` | Source of truth to verify claims |
-| **Generated Resume** | `local/document-generation/{job-type}/resume-*.typ` | Resume to review |
-| **Generated Cover Letter** | `local/document-generation/{job-type}/cover-letter-*.typ` | Cover letter to review |
+| **Candidate CV** | `local/cv.json` | Source of truth to verify claims |
+| **Applications** | `local/applications/{job-type}/{company}/` | All files for one application |
+| **Incoming Postings** | `local/postings/*.md` | Original unprocessed postings |
+
+### Application Folder Structure
+
+Each application folder contains all related files:
+
+```
+local/applications/{job-type}/{company}/
+├── posting.md           # Copy of original posting
+├── resume.typ           # Resume to review
+├── resume.pdf           # Compiled resume
+├── cover-letter.typ     # Cover letter to review
+└── cover-letter.pdf     # Compiled cover letter
+```
 
 ### Job Type Folders
 
-Documents are organized by role category:
+Applications are organized by role category:
 - `fe-dev/` - Front-End Developer roles
 - `swe/` - General Software Engineer roles
 - `ux-design/` - UX/UI Designer roles
