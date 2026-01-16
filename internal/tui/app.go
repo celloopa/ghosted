@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -385,6 +387,12 @@ func (a App) handleFetchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return a, a.fetchView.StartFetch()
 		case "done":
 			a.viewState = a.prevState
+		case "copy-context":
+			if err := a.handleCopyContext(); err != nil {
+				a.err = err
+			} else {
+				a.statusMsg = "Claude prompt copied to clipboard"
+			}
 		}
 		return a, nil
 	}
@@ -404,6 +412,71 @@ func (a *App) refreshList() {
 	} else {
 		a.listView.SetApplications(a.store.List())
 	}
+}
+
+// handleCopyContext copies the apply context to clipboard
+func (a *App) handleCopyContext() error {
+	result := a.fetchView.Result()
+	if result == nil || result.Type != "job" {
+		return fmt.Errorf("no job posting available")
+	}
+
+	// Run ghosted context to get full context
+	contextCmd := exec.Command(os.Args[0], "context")
+	contextOutput, err := contextCmd.Output()
+	if err != nil {
+		return fmt.Errorf("could not get context: %w", err)
+	}
+
+	// Build the prompt
+	prompt := buildApplyPrompt(string(contextOutput), result.PostingContent)
+
+	// Copy to clipboard using pbcopy (macOS)
+	cmd := exec.Command("pbcopy")
+	cmd.Stdin = strings.NewReader(prompt)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("could not copy to clipboard: %w", err)
+	}
+
+	return nil
+}
+
+// buildApplyPrompt creates the Claude prompt for resume/cover letter generation
+func buildApplyPrompt(contextOutput, postingContent string) string {
+	return fmt.Sprintf(`# Job Application Task
+
+I need you to help me create a tailored resume and cover letter for this job posting.
+
+## My Background & Context
+
+<ghosted_context>
+%s
+</ghosted_context>
+
+## Target Job Posting
+
+<posting>
+%s
+</posting>
+
+## Instructions
+
+Based on my CV and this job posting:
+
+1. **Analyze the posting** - Identify key requirements, skills, and keywords
+2. **Create a tailored resume** that:
+   - Highlights relevant experience from my CV
+   - Uses the job posting's terminology and keywords
+   - Quantifies achievements with metrics where possible
+   - Only uses real experience from my CV (no invention)
+3. **Write a cover letter** that:
+   - Opens with genuine interest in the company/role
+   - Connects 2-3 key achievements to their requirements
+   - Shows cultural fit with their values
+   - Is concise (1 page max)
+
+Output both documents in a format I can use directly.
+`, contextOutput, postingContent)
 }
 
 // View renders the app

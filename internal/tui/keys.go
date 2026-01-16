@@ -37,7 +37,8 @@ type KeyMap struct {
 	Clear  key.Binding
 
 	// Fetch
-	Fetch key.Binding
+	Fetch       key.Binding
+	CopyContext key.Binding
 
 	// General
 	Help key.Binding
@@ -152,6 +153,10 @@ func DefaultKeyMap() KeyMap {
 		Fetch: key.NewBinding(
 			key.WithKeys("f"),
 			key.WithHelp("f", "fetch"),
+		),
+		CopyContext: key.NewBinding(
+			key.WithKeys("c"),
+			key.WithHelp("c", "copy context"),
 		),
 
 		// General

@@ -35,11 +35,12 @@ func TestFetcher_GenerateFilename(t *testing.T) {
 	f := NewFetcher("")
 
 	tests := []struct {
-		name     string
-		company  string
-		position string
-		urlStr   string
-		expected string
+		name      string
+		company   string
+		position  string
+		urlStr    string
+		expected  string
+		expectErr bool
 	}{
 		{
 			name:     "with company and position",
@@ -49,11 +50,11 @@ func TestFetcher_GenerateFilename(t *testing.T) {
 			expected: "acme-corp-software-engineer-posting",
 		},
 		{
-			name:     "only URL path",
+			name:     "hostname fallback with date",
 			company:  "",
 			position: "",
 			urlStr:   "https://jobs.lever.co/acme/senior-engineer",
-			expected: "senior-engineer-posting",
+			expected: "lever-", // hostname + date fallback kicks in before URL path
 		},
 		{
 			name:     "special characters",
@@ -62,14 +63,35 @@ func TestFetcher_GenerateFilename(t *testing.T) {
 			urlStr:   "https://example.com/job",
 			expected: "company-co-sr-engineer-remote-posting",
 		},
+		{
+			name:     "numeric path - hostname fallback",
+			company:  "",
+			position: "",
+			urlStr:   "https://apply.careers.microsoft.com/job/1970393556641191",
+			expected: "microsoft-", // hostname + date fallback, not error
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			parsedURL, _ := url.Parse(tt.urlStr)
-			got := f.GenerateFilename(tt.company, tt.position, parsedURL)
-			if got != tt.expected {
-				t.Errorf("GenerateFilename() = %q, want %q", got, tt.expected)
+			got, err := f.GenerateFilename(tt.company, tt.position, parsedURL)
+			if tt.expectErr {
+				if err == nil {
+					t.Errorf("GenerateFilename() expected error, got %q", got)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("GenerateFilename() unexpected error: %v", err)
+				}
+				// For tests with date-based fallbacks, check prefix match
+				if strings.HasSuffix(tt.expected, "-") {
+					if !strings.HasPrefix(got, tt.expected) {
+						t.Errorf("GenerateFilename() = %q, want prefix %q", got, tt.expected)
+					}
+				} else if got != tt.expected {
+					t.Errorf("GenerateFilename() = %q, want %q", got, tt.expected)
+				}
 			}
 		})
 	}
@@ -599,5 +621,178 @@ func TestFetcher_ExtractMicrosoft_ApplySubdomain(t *testing.T) {
 	}
 	if content == "" {
 		t.Error("content should not be empty")
+	}
+}
+
+func TestValidateFilename(t *testing.T) {
+	tests := []struct {
+		name      string
+		filename  string
+		expectErr bool
+	}{
+		{"valid name", "microsoft-engineer-posting", false},
+		{"valid with date", "microsoft-2026-01-16-posting", false},
+		{"valid descriptive", "senior-backend-engineer-posting", false},
+		{"numeric only", "1970393556641191-posting", true},
+		{"long numeric", "123456789012345-posting", true},
+		{"uuid with dashes", "a1b2c3d4-e5f6-7890-abcd-ef1234567890-posting", true},
+		{"uuid without dashes", "a1b2c3d4e5f67890abcdef1234567890-posting", true},
+		{"hex hash", "deadbeefcafe1234567890ab-posting", true},
+		{"empty", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateFilename(tt.filename)
+			if tt.expectErr && err == nil {
+				t.Errorf("ValidateFilename(%q) expected error, got nil", tt.filename)
+			}
+			if !tt.expectErr && err != nil {
+				t.Errorf("ValidateFilename(%q) unexpected error: %v", tt.filename, err)
+			}
+		})
+	}
+}
+
+func TestLooksLikeID(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"123456789", true},
+		{"1970393556641191", true},
+		{"a1b2c3d4-e5f6-7890-abcd-ef1234567890", true},
+		{"a1b2c3d4e5f67890abcdef1234567890", true},
+		{"deadbeefcafe12345678", true},
+		{"microsoft", false},
+		{"senior-engineer", false},
+		{"microsoft-2026-01-16", false},
+		{"engineer-at-microsoft", false},
+		{"abc123xyz", false}, // mixed alphanumeric but not hex
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := looksLikeID(tt.input)
+			if got != tt.expected {
+				t.Errorf("looksLikeID(%q) = %v, want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsHexString(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"abc123", true},
+		{"deadbeef", true},
+		{"DEADBEEF", true},
+		{"0123456789abcdef", true},
+		{"xyz", false},
+		{"ghijk", false},
+		{"123g456", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := isHexString(tt.input)
+			if got != tt.expected {
+				t.Errorf("isHexString(%q) = %v, want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExtractCleanHostname(t *testing.T) {
+	tests := []struct {
+		host     string
+		expected string
+	}{
+		{"careers.microsoft.com", "microsoft"},
+		{"apply.careers.microsoft.com", "microsoft"},
+		{"jobs.lever.co", "lever"},
+		{"stripe.com", "stripe"},
+		{"www.google.com", "google"},
+		{"greenhouse.io", "greenhouse"},
+		{"jobs.greenhouse.io", "greenhouse"},
+		{"company.greenhouse.io", "company"},
+		{"mycompany.lever.co", "mycompany"},
+		{"careers.stripe.com", "stripe"},
+		{"work.example.com", "example"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.host, func(t *testing.T) {
+			got := extractCleanHostname(tt.host)
+			if got != tt.expected {
+				t.Errorf("extractCleanHostname(%q) = %q, want %q", tt.host, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFetcher_GenerateFilename_ImprovedFallbacks(t *testing.T) {
+	f := NewFetcher("")
+
+	tests := []struct {
+		name      string
+		company   string
+		position  string
+		urlStr    string
+		contains  string // expected to contain this substring
+		expectErr bool
+	}{
+		{
+			name:     "company + position",
+			company:  "Microsoft",
+			position: "Engineer",
+			urlStr:   "https://careers.microsoft.com/job/123",
+			contains: "microsoft-engineer",
+		},
+		{
+			name:     "position + hostname fallback",
+			company:  "",
+			position: "Engineer",
+			urlStr:   "https://careers.microsoft.com/job/123",
+			contains: "engineer-at-microsoft",
+		},
+		{
+			name:     "hostname + date fallback",
+			company:  "",
+			position: "",
+			urlStr:   "https://careers.microsoft.com/job/123",
+			contains: "microsoft-",
+		},
+		{
+			name:     "pure numeric path - hostname fallback",
+			company:  "",
+			position: "",
+			urlStr:   "https://example.com/job/1234567890123456",
+			contains: "example-", // hostname + date fallback works
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsedURL, _ := url.Parse(tt.urlStr)
+			got, err := f.GenerateFilename(tt.company, tt.position, parsedURL)
+
+			if tt.expectErr {
+				if err == nil {
+					t.Errorf("expected error, got %q", got)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				if !strings.Contains(got, tt.contains) {
+					t.Errorf("GenerateFilename() = %q, want to contain %q", got, tt.contains)
+				}
+			}
+		})
 	}
 }

@@ -8,6 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Clipboard Copy for Claude Prompt** (TUI)
+  - Press `c` after fetching a job posting to copy a complete Claude prompt to clipboard
+  - Prompt includes full `ghosted context` output (CV, applications, postings)
+  - Prompt includes the fetched job posting content
+  - Prompt includes instructions for generating tailored resume and cover letter
+  - macOS only (uses `pbcopy`)
+
+- **Filename Validation for Fetched Postings**
+  - Validates generated filenames to reject IDs (numeric, UUID, hex hashes)
+  - Better error messages with example usage when filename generation fails
+  - Improved hostname extraction for company names from job board URLs
+  - 8 new tests for filename validation
+
 - **Microsoft Careers Fetcher** ([#18](https://github.com/celloopa/ghosted/issues/18))
   - Added specialized extractor for `careers.microsoft.com` and `apply.careers.microsoft.com`
   - Parses job data from Next.js `__NEXT_DATA__` JSON embedded in page

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/celloopa/ghosted/internal/fetch"
@@ -24,11 +25,12 @@ type FetchView struct {
 
 // FetchResultDisplay holds the display info for a fetch result
 type FetchResultDisplay struct {
-	Type       string // "job" or "cv"
-	OutputPath string
-	Info1      string // Company/Name
-	Info2      string // Position/Label
-	Size       int
+	Type           string // "job" or "cv"
+	OutputPath     string
+	Info1          string // Company/Name
+	Info2          string // Position/Label
+	Size           int
+	PostingContent string // Full posting content for clipboard copy
 }
 
 // fetchCompleteMsg is sent when a fetch operation completes
@@ -85,6 +87,11 @@ func (v *FetchView) IsFetching() bool {
 	return v.isFetching
 }
 
+// Result returns the current fetch result
+func (v *FetchView) Result() *FetchResultDisplay {
+	return v.result
+}
+
 // HandleKey processes key events
 func (v *FetchView) HandleKey(msg tea.KeyMsg) (handled bool, action string) {
 	switch {
@@ -97,6 +104,12 @@ func (v *FetchView) HandleKey(msg tea.KeyMsg) (handled bool, action string) {
 			return true, ""
 		}
 		return true, "cancel"
+	case key.Matches(msg, v.keys.CopyContext):
+		// Only allow copy context for job postings
+		if v.result != nil && v.result.Type == "job" {
+			return true, "copy-context"
+		}
+		return true, ""
 	case key.Matches(msg, v.keys.Enter):
 		if v.isFetching {
 			return true, ""
@@ -154,12 +167,18 @@ func (v *FetchView) StartFetch() tea.Cmd {
 			if fetchErr != nil {
 				err = fetchErr
 			} else {
+				// Read the saved posting content for clipboard copy
+				postingContent := ""
+				if content, readErr := os.ReadFile(jobResult.OutputPath); readErr == nil {
+					postingContent = string(content)
+				}
 				result = &FetchResultDisplay{
-					Type:       "job",
-					OutputPath: jobResult.OutputPath,
-					Info1:      jobResult.Company,
-					Info2:      jobResult.Position,
-					Size:       jobResult.ContentSize,
+					Type:           "job",
+					OutputPath:     jobResult.OutputPath,
+					Info1:          jobResult.Company,
+					Info2:          jobResult.Position,
+					Size:           jobResult.ContentSize,
+					PostingContent: postingContent,
 				}
 			}
 		}
@@ -232,9 +251,17 @@ func (v *FetchView) View() string {
 		if v.result.Type == "job" {
 			b.WriteString(SubtleStyle.Render("Next step: ghosted apply " + v.result.OutputPath))
 			b.WriteString("\n\n")
+			b.WriteString(fmt.Sprintf("%s %s  %s %s  %s %s",
+				HelpKeyStyle.Render("c"),
+				HelpDescStyle.Render("copy Claude prompt"),
+				HelpKeyStyle.Render("enter"),
+				HelpDescStyle.Render("close"),
+				HelpKeyStyle.Render("esc"),
+				HelpDescStyle.Render("fetch another"),
+			))
+		} else {
+			b.WriteString(SubtleStyle.Render("Press enter to close, or esc to fetch another"))
 		}
-
-		b.WriteString(SubtleStyle.Render("Press enter to close, or esc to fetch another"))
 	} else {
 		b.WriteString(SubtleStyle.Render("Enter a URL to fetch a job posting, or a domain to fetch a CV"))
 		b.WriteString("\n")

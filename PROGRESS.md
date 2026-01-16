@@ -1,6 +1,6 @@
 # Multi-Agent Document Generation Pipeline - Progress Tracker
 
-> **Last Updated:** 2026-01-16 (Microsoft fetcher #18 completed)
+> **Last Updated:** 2026-01-16 (TUI clipboard copy + filename validation)
 > **Project:** ghosted
 > **Kanban Project ID:** `b666852b-0ef9-4ee0-8d91-a7f341697897`
 > **GitHub Repo:** `celloopa/ghosted`
@@ -349,6 +349,51 @@ Replace Claude API calls with local model inference:
 ---
 
 ## Completed Work Log
+
+### 2026-01-16: TUI Clipboard Copy for Claude Prompt
+
+Added ability to copy a complete Claude prompt to clipboard after fetching a job posting in the TUI.
+
+**Problem solved:** After fetching a posting in the TUI, users had to manually copy content and construct a prompt for Claude. This was tedious.
+
+**Files modified:**
+- `internal/tui/fetch.go` - Added `PostingContent` field, `Result()` getter, 'c' key handler, help text
+- `internal/tui/keys.go` - Added `CopyContext` key binding
+- `internal/tui/app.go` - Added `handleCopyContext()` and `buildApplyPrompt()` functions
+
+**Features:**
+- Press 'c' after successful job posting fetch to copy prompt
+- Runs `ghosted context` to include full context (CV, applications, postings)
+- Includes the fetched job posting content
+- Includes instructions for generating tailored resume and cover letter
+- Shows success message "Claude prompt copied to clipboard"
+
+---
+
+### 2026-01-16: Filename Validation for Fetched Postings
+
+Improved filename generation for fetched job postings to reject IDs and provide better error messages.
+
+**Problem solved:** Some job board URLs (especially LinkedIn) generate filenames that are just numeric IDs, which aren't useful for organizing postings.
+
+**Files modified:**
+- `internal/fetch/fetcher.go` - Added validation functions and improved hostname extraction
+- `internal/fetch/fetcher_test.go` - 8 new tests for filename validation
+- `main.go` - Better error messages with example usage
+
+**Functions added:**
+- `isHexString()` - Checks if string is hexadecimal
+- `looksLikeID()` - Detects numeric, UUID, or hex hash patterns
+- `ValidateFilename()` - Validates generated filenames
+- `extractCleanHostname()` - Extracts company name from hostname
+
+**Test coverage:**
+- `TestLooksLikeID` - ID pattern detection
+- `TestValidateFilename` - Filename validation
+- `TestExtractCleanHostname` - Hostname parsing
+- `TestGenerateFilename_Validation` - Integration tests
+
+---
 
 ### 2026-01-16: Microsoft Careers Site Fetcher (#18)
 
