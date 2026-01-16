@@ -89,7 +89,13 @@ ghosted/
 │   │   ├── resume_generator.go      # Resume Generator Agent
 │   │   ├── coverletter_generator.go # Cover Letter Generator Agent
 │   │   ├── reviewer.go              # Hiring Manager Review Agent
-│   │   └── tracker.go               # Tracker Integration
+│   │   ├── tracker.go               # Tracker Integration
+│   │   └── prompts/                 # ✅ Agent prompt templates
+│   │       ├── parser.md            # ✅ Parser agent prompt
+│   │       ├── resume.md            # ✅ Resume generator prompt
+│   │       ├── cover.md             # ✅ Cover letter generator prompt
+│   │       ├── reviewer.md          # ✅ Reviewer agent prompt
+│   │       └── tracker.md           # ✅ Tracker integration prompt
 │   └── ...
 ├── local/
 │   ├── postings/                    # Drop job postings here
@@ -99,12 +105,7 @@ ghosted/
 │   ├── cover-letters/               # Generated cover letter PDFs
 │   └── document-generation/
 │       ├── .agent/
-│       │   ├── config.json          # ✅ Runtime configuration
-│       │   └── prompts/
-│       │       ├── parser.md        # Parser agent prompt
-│       │       ├── resume.md        # Resume generator prompt
-│       │       ├── coverletter.md   # Cover letter generator prompt
-│       │       └── reviewer.md      # Reviewer agent prompt
+│       │   └── config.json          # Runtime configuration (references local files)
 │       ├── cv.json                  # Source CV data
 │       ├── resume.typ               # Base resume template
 │       └── coverletter.typ          # Base cover letter template
@@ -195,11 +196,11 @@ ghosted watch --auto-approve               # Auto-approve all
 ### 2026-01-16: Agent Prompt Templates (Task 7)
 
 **Files created:**
-- `local/document-generation/.agent/prompts/parser.md` - Job posting parser prompt
-- `local/document-generation/.agent/prompts/resume.md` - Resume generator prompt with Typst format
-- `local/document-generation/.agent/prompts/cover.md` - Cover letter generator prompt with Typst format
-- `local/document-generation/.agent/prompts/reviewer.md` - Hiring manager review prompt with scoring criteria
-- `local/document-generation/.agent/prompts/tracker.md` - Tracker integration prompt for ghosted CLI
+- `internal/agent/prompts/parser.md` - Job posting parser prompt
+- `internal/agent/prompts/resume.md` - Resume generator prompt with Typst format
+- `internal/agent/prompts/cover.md` - Cover letter generator prompt with Typst format
+- `internal/agent/prompts/reviewer.md` - Hiring manager review prompt with scoring criteria
+- `internal/agent/prompts/tracker.md` - Tracker integration prompt for ghosted CLI
 
 **Key features:**
 - Parser: Structured JSON output with requirements, tech_stack, keywords, company_values

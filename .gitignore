@@ -19,12 +19,4 @@ Thumbs.db
 .agent/
 
 # Local files (resumes, cover letters, job postings)
-local/*
-
-# Exception: track agent prompts (part of project infrastructure)
-!local/document-generation/
-local/document-generation/*
-!local/document-generation/.agent/
-local/document-generation/.agent/*
-!local/document-generation/.agent/prompts/
-!local/document-generation/.agent/prompts/*
+local/
