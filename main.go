@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/celloopa/ghosted/internal/agent"
 	"github.com/celloopa/ghosted/internal/fetch"
 	"github.com/celloopa/ghosted/internal/model"
 	"github.com/celloopa/ghosted/internal/store"
@@ -50,6 +51,8 @@ func main() {
 		cmdFetch(os.Args[2:])
 	case "context":
 		cmdContext(s)
+	case "apply":
+		cmdApply(s, os.Args[2:])
 	case "upgrade":
 		cmdUpgrade()
 	case "help", "--help", "-h":
@@ -89,6 +92,7 @@ Commands:
   update <id> --json '<json>'  Update application fields
   delete <id>           Delete an application
   fetch <url> [--output name]  Fetch job posting from URL
+  apply <posting> [flags]      Run full pipeline on a job posting
   context               Show context for AI agents (postings, CV, applications)
   upgrade               Update ghosted to the latest version
   help                  Show this help
@@ -103,6 +107,13 @@ Examples:
   ghosted delete abc123
   ghosted fetch https://jobs.lever.co/company/job-id
   ghosted fetch --output acme-swe.md https://example.com/job
+  ghosted apply local/postings/acme-swe.md
+  ghosted apply --dry-run local/postings/test.md
+  ghosted apply --auto-approve local/postings/acme-swe.md
+
+Apply Command Flags:
+  --dry-run       Generate documents without adding to tracker
+  --auto-approve  Skip review confirmation step
 
 ─────────────────────────────────────────────────────────────────────────────────
 AI AGENT WORKFLOW
@@ -627,6 +638,90 @@ func cmdContext(s *store.Store) {
 	fmt.Println(`═══════════════════════════════════════════════════════════════════════════════
 WORKFLOW: fetch posting → parse → generate resume/cover → review → add to tracker
 ═══════════════════════════════════════════════════════════════════════════════`)
+}
+
+// cmdApply runs the full pipeline on a job posting
+func cmdApply(s *store.Store, args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: ghosted apply <posting-file> [--dry-run] [--auto-approve]")
+		os.Exit(1)
+	}
+
+	// Parse arguments
+	var postingPath string
+	dryRun := false
+	autoApprove := false
+
+	for _, arg := range args {
+		switch arg {
+		case "--dry-run":
+			dryRun = true
+		case "--auto-approve":
+			autoApprove = true
+		default:
+			if postingPath == "" && !isFlag(arg) {
+				postingPath = arg
+			}
+		}
+	}
+
+	if postingPath == "" {
+		fmt.Fprintln(os.Stderr, "Error: posting file is required")
+		fmt.Fprintln(os.Stderr, "Usage: ghosted apply <posting-file> [--dry-run] [--auto-approve]")
+		os.Exit(1)
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(postingPath); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "Error: file not found: %s\n", postingPath)
+		os.Exit(1)
+	}
+
+	// Create pipeline config path
+	configPath := filepath.Join("local", "document-generation", ".agent", "config.json")
+
+	// For dry run, don't pass the store (prevents tracker entry)
+	var pipelineStore *store.Store
+	if !dryRun {
+		pipelineStore = s
+	}
+
+	// Create pipeline
+	pipeline, err := agent.NewPipeline(configPath, pipelineStore)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating pipeline: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Running pipeline on: %s\n", postingPath)
+	if dryRun {
+		fmt.Println("Mode: dry-run (no tracker entry will be created)")
+	}
+	if autoApprove {
+		fmt.Println("Mode: auto-approve (skipping review confirmation)")
+	}
+	fmt.Println()
+
+	// Run pipeline
+	if err := pipeline.Run(postingPath); err != nil {
+		fmt.Fprintf(os.Stderr, "\nPipeline failed: %v\n", err)
+		fmt.Println("\n" + pipeline.GetStatus())
+		os.Exit(1)
+	}
+
+	// Output status
+	fmt.Println("\n" + pipeline.GetStatus())
+
+	if dryRun {
+		fmt.Println("\nDry run complete. No application was added to tracker.")
+	} else {
+		fmt.Println("\nApplication added to tracker. Run 'ghosted list' to view.")
+	}
+}
+
+// isFlag checks if an argument is a flag
+func isFlag(arg string) bool {
+	return len(arg) > 0 && arg[0] == '-'
 }
 
 // cmdUpgrade updates ghosted to the latest version

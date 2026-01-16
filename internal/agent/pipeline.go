@@ -279,7 +279,8 @@ func (p *Pipeline) runReviewerStep(_ json.RawMessage) (json.RawMessage, error) {
 // runTrackerStep creates an application entry in the store
 func (p *Pipeline) runTrackerStep(_ json.RawMessage) (json.RawMessage, error) {
 	if p.Store == nil {
-		return nil, fmt.Errorf("store not initialized")
+		// Skip tracker step gracefully (dry-run mode)
+		return json.Marshal(map[string]string{"status": "skipped", "reason": "dry-run mode"})
 	}
 
 	// Get the parsed posting from the parser step
