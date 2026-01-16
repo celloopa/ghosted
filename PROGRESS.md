@@ -1,6 +1,6 @@
 # Multi-Agent Document Generation Pipeline - Progress Tracker
 
-> **Last Updated:** 2026-01-16 (apply, context, compile commands complete)
+> **Last Updated:** 2026-01-16 (unified fetch command complete)
 > **Project:** ghosted
 > **Kanban Project ID:** `b666852b-0ef9-4ee0-8d91-a7f341697897`
 > **GitHub Repo:** `celloopa/ghosted`
@@ -197,14 +197,13 @@ ghosted watch --auto-approve               # Auto-approve all
 ## Current Focus
 
 **Completed:**
-- `ghosted fetch <url>` command - fetches job postings from URLs
+- `ghosted fetch <url|domain>` command - unified fetch for job postings AND CVs (auto-detected)
 - `ghosted apply <posting>` command - runs full pipeline with --dry-run support
 - `ghosted context` command - outputs context for AI agents (postings, CV, applications)
 - `ghosted compile <id|dir>` command - compiles Typst to PDF and updates tracker
 
 **Next task to work on:** Phase 4 improvements:
 1. Add `--non-interactive` flag to ghosted apply (`bdfff0fc`) - for AI agent usage
-2. Add `ghosted cv fetch <website>` command (`715e1484`) - fetch CV from remote URL
 
 **Blockers:** None - Phase 3 complete!
 
@@ -341,6 +340,30 @@ Replace Claude API calls with local model inference:
 ---
 
 ## Completed Work Log
+
+### 2026-01-16: Unified Fetch Command
+
+Merged job posting fetch and CV fetch into a single `ghosted fetch` command with auto-detection.
+
+**Files created/modified:**
+- `internal/fetch/fetcher.go` - Added `FetchType` enum and `DetectFetchType()` function
+- `internal/fetch/cv.go` - New CV fetcher with JSON Resume support
+- `internal/fetch/cv_test.go` - 8 tests for CV fetching and detection
+- `main.go` - Unified `cmdFetch()` to handle both types
+
+**Detection rules:**
+- Bare domain (`cello.design`) → CV fetch to `local/cv.json`
+- Explicit `/cv.json` path → CV fetch
+- Any URL with path → Job posting fetch to `local/postings/`
+
+**Usage:**
+```bash
+ghosted fetch https://jobs.lever.co/company/123  # Job posting
+ghosted fetch cello.design                       # CV from domain/cv.json
+ghosted fetch https://example.com/cv.json        # CV from explicit URL
+```
+
+---
 
 ### 2026-01-16: Context and Compile Commands
 

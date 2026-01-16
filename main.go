@@ -91,7 +91,7 @@ Commands:
   get <id> [--json]     Get application by ID
   update <id> --json '<json>'  Update application fields
   delete <id>           Delete an application
-  fetch <url> [--output name]  Fetch job posting from URL
+  fetch <url|domain>    Fetch job posting or CV (auto-detected)
   apply <posting> [flags]      Run full pipeline on a job posting
   context               Show context for AI agents (postings, CV, applications)
   upgrade               Update ghosted to the latest version
@@ -105,7 +105,9 @@ Examples:
   ghosted list --json
   ghosted update abc123 --json '{"status":"interview"}'
   ghosted delete abc123
-  ghosted fetch https://jobs.lever.co/company/job-id
+  ghosted fetch https://jobs.lever.co/company/job-id   # Fetch job posting
+  ghosted fetch cello.design                           # Fetch CV from domain/cv.json
+  ghosted fetch https://example.com/cv.json            # Fetch CV from explicit URL
   ghosted fetch --output acme-swe.md https://example.com/job
   ghosted apply local/postings/acme-swe.md
   ghosted apply --dry-run local/postings/test.md
@@ -436,14 +438,22 @@ func cmdDelete(s *store.Store, args []string) {
 	fmt.Printf("Deleted: %s @ %s\n", app.Position, app.Company)
 }
 
-// cmdFetch fetches a job posting from a URL and saves it locally
+// cmdFetch fetches a job posting or CV from a URL and saves it locally
+// Auto-detects based on URL:
+// - Bare domain (cello.design) or /cv.json path → CV fetch to local/cv.json
+// - Any URL with a path → Job posting fetch to local/postings/
 func cmdFetch(args []string) {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "Usage: ghosted fetch <url> [--output name.md]")
+		fmt.Fprintln(os.Stderr, "Usage: ghosted fetch <url|domain> [--output name]")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "Examples:")
+		fmt.Fprintln(os.Stderr, "  ghosted fetch https://jobs.lever.co/company/123  # Job posting")
+		fmt.Fprintln(os.Stderr, "  ghosted fetch cello.design                       # CV from domain/cv.json")
+		fmt.Fprintln(os.Stderr, "  ghosted fetch https://example.com/cv.json        # CV from explicit URL")
 		os.Exit(1)
 	}
 
-	var urlArg string
+	var inputArg string
 	var outputName string
 
 	// Parse arguments
@@ -453,15 +463,55 @@ func cmdFetch(args []string) {
 				outputName = args[i+1]
 				i++
 			}
-		} else if fetch.IsURL(args[i]) {
-			urlArg = args[i]
+		} else if inputArg == "" && !isFlag(args[i]) {
+			inputArg = args[i]
 		}
 	}
 
-	if urlArg == "" {
-		fmt.Fprintln(os.Stderr, "Error: URL is required")
-		fmt.Fprintln(os.Stderr, "Usage: ghosted fetch <url> [--output name.md]")
+	if inputArg == "" {
+		fmt.Fprintln(os.Stderr, "Error: URL or domain is required")
+		fmt.Fprintln(os.Stderr, "Usage: ghosted fetch <url|domain> [--output name]")
 		os.Exit(1)
+	}
+
+	// Detect what type of fetch to perform
+	fetchType := fetch.DetectFetchType(inputArg)
+
+	switch fetchType {
+	case fetch.FetchTypeCV:
+		fetchCV(inputArg)
+	case fetch.FetchTypeJobPosting:
+		fetchJobPosting(inputArg, outputName)
+	}
+}
+
+// fetchCV fetches a CV from a domain and saves it to local/cv.json
+func fetchCV(input string) {
+	f := fetch.NewFetcher("local")
+
+	fmt.Printf("Fetching CV from: %s\n", input)
+
+	result, err := f.FetchCV(input)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error fetching CV: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Saved to: %s\n", result.OutputPath)
+	if result.Name != "" {
+		fmt.Printf("Name:     %s\n", result.Name)
+	}
+	if result.Label != "" {
+		fmt.Printf("Label:    %s\n", result.Label)
+	}
+	fmt.Printf("Size:     %d bytes\n", result.Size)
+}
+
+// fetchJobPosting fetches a job posting from a URL and saves it to local/postings/
+func fetchJobPosting(urlArg string, outputName string) {
+	// Ensure URL has a scheme
+	if !fetch.IsURL(urlArg) {
+		urlArg = "https://" + urlArg
 	}
 
 	// Default output directory
@@ -470,7 +520,7 @@ func cmdFetch(args []string) {
 	// Create fetcher and fetch
 	f := fetch.NewFetcher(outputDir)
 
-	fmt.Printf("Fetching: %s\n", urlArg)
+	fmt.Printf("Fetching job posting: %s\n", urlArg)
 
 	result, err := f.Fetch(urlArg, outputName)
 	if err != nil {

@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+// FetchType indicates what kind of content to fetch
+type FetchType int
+
+const (
+	FetchTypeJobPosting FetchType = iota
+	FetchTypeCV
+)
+
 // Fetcher handles fetching and saving job postings from URLs
 type Fetcher struct {
 	Client    *http.Client
@@ -40,6 +48,41 @@ func NewFetcher(outputDir string) *Fetcher {
 // IsURL checks if the input looks like a URL
 func IsURL(input string) bool {
 	return strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://")
+}
+
+// DetectFetchType determines whether the input should be fetched as a CV or job posting.
+// Rules:
+// - Bare domain (no path after domain) → CV fetch
+// - Explicit /cv.json path → CV fetch
+// - Everything else → Job posting fetch
+func DetectFetchType(input string) FetchType {
+	// Normalize input: add https:// if missing
+	normalizedURL := input
+	if !IsURL(input) {
+		normalizedURL = "https://" + input
+	}
+
+	parsedURL, err := url.Parse(normalizedURL)
+	if err != nil {
+		// If we can't parse it, default to job posting
+		return FetchTypeJobPosting
+	}
+
+	// Get the path, trimming any trailing slashes
+	path := strings.TrimRight(parsedURL.Path, "/")
+
+	// Explicit /cv.json path → CV fetch
+	if strings.HasSuffix(path, "/cv.json") || path == "/cv.json" {
+		return FetchTypeCV
+	}
+
+	// Bare domain (empty path or just /) → CV fetch
+	if path == "" {
+		return FetchTypeCV
+	}
+
+	// Everything else → Job posting
+	return FetchTypeJobPosting
 }
 
 // Fetch downloads a job posting from a URL and saves it to the output directory
