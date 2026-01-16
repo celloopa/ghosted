@@ -109,6 +109,12 @@ func (l *ListView) HandleKey(msg tea.KeyMsg) (handled bool, action string) {
 	case key.Matches(msg, l.keys.Help):
 		l.showHelp = !l.showHelp
 		return true, ""
+	case key.Matches(msg, l.keys.Back):
+		if l.showHelp {
+			l.showHelp = false
+			return true, ""
+		}
+		return false, ""
 	case key.Matches(msg, l.keys.Add):
 		return true, "add"
 	case key.Matches(msg, l.keys.Edit):
@@ -271,16 +277,28 @@ func (l *ListView) View() string {
 		}
 	}
 
-	// Help
+	// Short help bar at the bottom
+	b.WriteString("\n\n")
+	b.WriteString(l.renderShortHelp())
+
+	content := b.String()
+
+	// If help is shown, overlay the help dialog
 	if l.showHelp {
-		b.WriteString("\n\n")
-		b.WriteString(l.renderFullHelp())
-	} else {
-		b.WriteString("\n\n")
-		b.WriteString(l.renderShortHelp())
+		helpDialog := l.renderHelpDialog()
+		// Center the dialog on the screen
+		return lipgloss.Place(
+			l.width,
+			l.height,
+			lipgloss.Center,
+			lipgloss.Center,
+			helpDialog,
+			lipgloss.WithWhitespaceChars(" "),
+			lipgloss.WithWhitespaceForeground(lipgloss.Color("#000000")),
+		)
 	}
 
-	return b.String()
+	return content
 }
 
 func (l *ListView) renderHeader() string {
@@ -351,13 +369,16 @@ func (l *ListView) renderShortHelp() string {
 	return strings.Join(parts, HelpSepStyle.Render(" | "))
 }
 
-func (l *ListView) renderFullHelp() string {
+func (l *ListView) renderHelpDialog() string {
 	var b strings.Builder
 
-	// Keyboard shortcuts section
-	b.WriteString(SectionStyle.Render("Keyboard Shortcuts"))
+	// Title
+	b.WriteString(DialogTitleStyle.Render("Help"))
 	b.WriteString("\n\n")
 
+	// Keyboard shortcuts section
+	b.WriteString(HelpKeyStyle.Render("Navigation"))
+	b.WriteString("\n")
 	groups := l.keys.FullHelp()
 	for _, group := range groups {
 		var parts []string
@@ -367,54 +388,50 @@ func (l *ListView) renderFullHelp() string {
 				HelpDescStyle.Render(binding.Help().Desc),
 			))
 		}
-		b.WriteString(strings.Join(parts, "  "))
+		b.WriteString("  " + strings.Join(parts, "  "))
 		b.WriteString("\n")
 	}
 
 	// Status keys
 	b.WriteString("\n")
-	b.WriteString(SectionStyle.Render("Status Keys"))
-	b.WriteString("\n\n")
+	b.WriteString(HelpKeyStyle.Render("Status Keys"))
+	b.WriteString("\n")
+	b.WriteString("  ")
 	statusKeys := []string{
 		HelpKeyStyle.Render("1") + " " + HelpDescStyle.Render("saved"),
 		HelpKeyStyle.Render("2") + " " + HelpDescStyle.Render("applied"),
 		HelpKeyStyle.Render("3") + " " + HelpDescStyle.Render("screening"),
 		HelpKeyStyle.Render("4") + " " + HelpDescStyle.Render("interview"),
+	}
+	b.WriteString(strings.Join(statusKeys, "  "))
+	b.WriteString("\n  ")
+	statusKeys2 := []string{
 		HelpKeyStyle.Render("5") + " " + HelpDescStyle.Render("offer"),
 		HelpKeyStyle.Render("6") + " " + HelpDescStyle.Render("accepted"),
 		HelpKeyStyle.Render("7") + " " + HelpDescStyle.Render("rejected"),
 		HelpKeyStyle.Render("8") + " " + HelpDescStyle.Render("withdrawn"),
 	}
-	b.WriteString(strings.Join(statusKeys, "  "))
+	b.WriteString(strings.Join(statusKeys2, "  "))
 	b.WriteString("\n")
 
 	// CLI commands section
 	b.WriteString("\n")
-	b.WriteString(SectionStyle.Render("CLI Commands"))
-	b.WriteString("\n\n")
+	b.WriteString(HelpKeyStyle.Render("CLI Commands"))
+	b.WriteString("\n")
 	cliCmds := []string{
-		HelpKeyStyle.Render("ghosted") + " " + HelpDescStyle.Render("launch TUI"),
-		HelpKeyStyle.Render("ghosted list") + " " + HelpDescStyle.Render("list apps"),
-		HelpKeyStyle.Render("ghosted fetch <url>") + " " + HelpDescStyle.Render("fetch posting"),
-		HelpKeyStyle.Render("ghosted add --json '{...}'") + " " + HelpDescStyle.Render("add app"),
+		"  " + HelpKeyStyle.Render("ghosted fetch <url>") + "       " + HelpDescStyle.Render("fetch job posting"),
+		"  " + HelpKeyStyle.Render("ghosted add --json '{}'") + "   " + HelpDescStyle.Render("add application"),
+		"  " + HelpKeyStyle.Render("ghosted context") + "           " + HelpDescStyle.Render("show agent context"),
+		"  " + HelpKeyStyle.Render("ghosted help") + "              " + HelpDescStyle.Render("full documentation"),
 	}
 	b.WriteString(strings.Join(cliCmds, "\n"))
 	b.WriteString("\n")
 
-	// Tips section
+	// Footer
 	b.WriteString("\n")
-	b.WriteString(SectionStyle.Render("Tips"))
-	b.WriteString("\n\n")
-	tips := []string{
-		SubtleStyle.Render("• Use") + " " + HelpKeyStyle.Render("ghosted fetch <url>") + " " + SubtleStyle.Render("to save job postings from Lever, Greenhouse, LinkedIn"),
-		SubtleStyle.Render("• Job postings saved to") + " " + HelpKeyStyle.Render("local/postings/"),
-		SubtleStyle.Render("• Run") + " " + HelpKeyStyle.Render("ghosted help") + " " + SubtleStyle.Render("for full CLI documentation"),
-		SubtleStyle.Render("• Run") + " " + HelpKeyStyle.Render("ghosted upgrade") + " " + SubtleStyle.Render("to update to latest version"),
-	}
-	b.WriteString(strings.Join(tips, "\n"))
-	b.WriteString("\n")
+	b.WriteString(SubtleStyle.Render("Press ? or esc to close"))
 
-	return b.String()
+	return DialogStyle.Render(b.String())
 }
 
 // Helper functions

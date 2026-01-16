@@ -180,3 +180,16 @@ var StatusBarStyle = lipgloss.NewStyle().
 	Foreground(colorMuted).
 	Background(colorBgAlt).
 	Padding(0, 1)
+
+// Dialog overlay style
+var DialogStyle = lipgloss.NewStyle().
+	Border(lipgloss.RoundedBorder()).
+	BorderForeground(colorPrimary).
+	Background(lipgloss.Color("#16162a")).
+	Padding(1, 2)
+
+// Dialog title style
+var DialogTitleStyle = lipgloss.NewStyle().
+	Foreground(colorPrimary).
+	Bold(true).
+	MarginBottom(1)

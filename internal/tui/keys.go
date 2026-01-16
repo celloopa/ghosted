@@ -176,13 +176,11 @@ func (k KeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{k.Add, k.Enter, k.Filter, k.Search, k.Help, k.Quit}
 }
 
-// FullHelp returns keybindings for the expanded help view
+// FullHelp returns keybindings for the expanded help view (excludes status keys shown separately)
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Top, k.Bottom},
 		{k.Add, k.Edit, k.Delete, k.Enter},
-		{k.Status1, k.Status2, k.Status3, k.Status4},
-		{k.Status5, k.Status6, k.Status7, k.Status8},
 		{k.Search, k.Filter, k.Clear},
 		{k.Help, k.Quit},
 	}
