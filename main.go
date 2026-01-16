@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/celloopa/ghosted/internal/fetch"
 	"github.com/celloopa/ghosted/internal/model"
 	"github.com/celloopa/ghosted/internal/store"
 	"github.com/celloopa/ghosted/internal/tui"
@@ -45,6 +46,8 @@ func main() {
 		cmdUpdate(s, os.Args[2:])
 	case "delete":
 		cmdDelete(s, os.Args[2:])
+	case "fetch":
+		cmdFetch(os.Args[2:])
 	case "upgrade":
 		cmdUpgrade()
 	case "help", "--help", "-h":
@@ -83,6 +86,7 @@ Commands:
   get <id> [--json]     Get application by ID
   update <id> --json '<json>'  Update application fields
   delete <id>           Delete an application
+  fetch <url> [--output name]  Fetch job posting from URL
   upgrade               Update ghosted to the latest version
   help                  Show this help
 
@@ -93,7 +97,9 @@ Examples:
   ghosted add --json '{"company":"Acme Corp","position":"Software Engineer"}'
   ghosted list --json
   ghosted update abc123 --json '{"status":"interview"}'
-  ghosted delete abc123`)
+  ghosted delete abc123
+  ghosted fetch https://jobs.lever.co/company/job-id
+  ghosted fetch --output acme-swe.md https://example.com/job`)
 }
 
 // cmdAdd adds a new application from JSON input
@@ -374,6 +380,59 @@ func cmdDelete(s *store.Store, args []string) {
 	}
 
 	fmt.Printf("Deleted: %s @ %s\n", app.Position, app.Company)
+}
+
+// cmdFetch fetches a job posting from a URL and saves it locally
+func cmdFetch(args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: ghosted fetch <url> [--output name.md]")
+		os.Exit(1)
+	}
+
+	var urlArg string
+	var outputName string
+
+	// Parse arguments
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--output" || args[i] == "-o" {
+			if i+1 < len(args) {
+				outputName = args[i+1]
+				i++
+			}
+		} else if fetch.IsURL(args[i]) {
+			urlArg = args[i]
+		}
+	}
+
+	if urlArg == "" {
+		fmt.Fprintln(os.Stderr, "Error: URL is required")
+		fmt.Fprintln(os.Stderr, "Usage: ghosted fetch <url> [--output name.md]")
+		os.Exit(1)
+	}
+
+	// Default output directory
+	outputDir := "local/postings"
+
+	// Create fetcher and fetch
+	f := fetch.NewFetcher(outputDir)
+
+	fmt.Printf("Fetching: %s\n", urlArg)
+
+	result, err := f.Fetch(urlArg, outputName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error fetching URL: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Saved to: %s\n", result.OutputPath)
+	if result.Company != "" {
+		fmt.Printf("Company:  %s\n", result.Company)
+	}
+	if result.Position != "" {
+		fmt.Printf("Position: %s\n", result.Position)
+	}
+	fmt.Printf("Size:     %d bytes\n", result.ContentSize)
+	fmt.Println("\nNext step: ghosted apply", result.OutputPath)
 }
 
 func getDataPath() string {

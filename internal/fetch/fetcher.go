@@ -1,0 +1,456 @@
+package fetch
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"time"
+)
+
+// Fetcher handles fetching and saving job postings from URLs
+type Fetcher struct {
+	Client    *http.Client
+	OutputDir string
+}
+
+// FetchResult contains the result of a fetch operation
+type FetchResult struct {
+	URL         string `json:"url"`
+	OutputPath  string `json:"output_path"`
+	Company     string `json:"company"`
+	Position    string `json:"position"`
+	ContentSize int    `json:"content_size"`
+}
+
+// NewFetcher creates a new Fetcher instance
+func NewFetcher(outputDir string) *Fetcher {
+	return &Fetcher{
+		Client: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+		OutputDir: outputDir,
+	}
+}
+
+// IsURL checks if the input looks like a URL
+func IsURL(input string) bool {
+	return strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://")
+}
+
+// Fetch downloads a job posting from a URL and saves it to the output directory
+func (f *Fetcher) Fetch(rawURL string, outputName string) (*FetchResult, error) {
+	// Validate URL
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL: %w", err)
+	}
+
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return nil, fmt.Errorf("URL must be http or https")
+	}
+
+	// Fetch the page
+	req, err := http.NewRequest("GET", rawURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set a browser-like user agent to avoid being blocked
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+
+	resp, err := f.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch URL: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	htmlContent := string(body)
+
+	// Detect the job board and extract content
+	content, company, position := f.ExtractJobPosting(htmlContent, parsedURL)
+
+	// Generate output filename
+	if outputName == "" {
+		outputName = f.GenerateFilename(company, position, parsedURL)
+	}
+	if !strings.HasSuffix(outputName, ".md") {
+		outputName += ".md"
+	}
+
+	outputPath := filepath.Join(f.OutputDir, outputName)
+
+	// Ensure output directory exists
+	if err := os.MkdirAll(f.OutputDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Add metadata header to the content
+	finalContent := f.FormatOutput(content, rawURL, company, position)
+
+	// Write to file
+	if err := os.WriteFile(outputPath, []byte(finalContent), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return &FetchResult{
+		URL:         rawURL,
+		OutputPath:  outputPath,
+		Company:     company,
+		Position:    position,
+		ContentSize: len(finalContent),
+	}, nil
+}
+
+// ExtractJobPosting extracts job posting content from HTML based on the job board
+func (f *Fetcher) ExtractJobPosting(html string, parsedURL *url.URL) (content, company, position string) {
+	host := strings.ToLower(parsedURL.Host)
+
+	// Try to detect job board and use specialized extraction
+	switch {
+	case strings.Contains(host, "lever.co"):
+		return f.extractLever(html)
+	case strings.Contains(host, "greenhouse.io"):
+		return f.extractGreenhouse(html)
+	case strings.Contains(host, "workday.com"):
+		return f.extractWorkday(html)
+	case strings.Contains(host, "linkedin.com"):
+		return f.extractLinkedIn(html)
+	case strings.Contains(host, "ashbyhq.com"):
+		return f.extractAshby(html)
+	default:
+		return f.extractGeneric(html)
+	}
+}
+
+// extractLever extracts job posting from Lever pages
+func (f *Fetcher) extractLever(html string) (content, company, position string) {
+	// Extract title
+	position = extractBetween(html, `<h2>`, `</h2>`)
+	if position == "" {
+		position = extractMetaContent(html, "og:title")
+	}
+
+	// Extract company from URL or page
+	company = extractBetween(html, `<div class="main-header-content">`, `</div>`)
+	if company == "" {
+		company = extractMetaContent(html, "og:site_name")
+	}
+
+	// Extract job description
+	content = extractBetween(html, `<div class="section-wrapper page-full-width">`, `<div class="section last">`)
+	if content == "" {
+		content = extractBetween(html, `<div class="content">`, `</div>`)
+	}
+
+	content = cleanHTML(content)
+	company = cleanText(company)
+	position = cleanText(position)
+
+	return content, company, position
+}
+
+// extractGreenhouse extracts job posting from Greenhouse pages
+func (f *Fetcher) extractGreenhouse(html string) (content, company, position string) {
+	position = extractMetaContent(html, "og:title")
+	company = extractBetween(html, `<span class="company-name">`, `</span>`)
+	if company == "" {
+		company = extractMetaContent(html, "og:site_name")
+	}
+
+	content = extractBetween(html, `<div id="content">`, `<div id="application">`)
+	if content == "" {
+		content = extractBetween(html, `<div class="content">`, `</div>`)
+	}
+
+	content = cleanHTML(content)
+	company = cleanText(company)
+	position = cleanText(position)
+
+	return content, company, position
+}
+
+// extractWorkday extracts job posting from Workday pages
+func (f *Fetcher) extractWorkday(html string) (content, company, position string) {
+	position = extractMetaContent(html, "og:title")
+	company = extractMetaContent(html, "og:site_name")
+
+	// Workday uses dynamic content, so we get what we can
+	content = extractBetween(html, `<div data-automation-id="jobPostingDescription">`, `</div>`)
+
+	content = cleanHTML(content)
+	company = cleanText(company)
+	position = cleanText(position)
+
+	return content, company, position
+}
+
+// extractLinkedIn extracts job posting from LinkedIn pages
+func (f *Fetcher) extractLinkedIn(html string) (content, company, position string) {
+	position = extractMetaContent(html, "og:title")
+	company = extractBetween(html, `<a class="topcard__org-name-link"`, `</a>`)
+	if company == "" {
+		// Try alternate selector
+		company = extractBetween(html, `"companyName":"`, `"`)
+	}
+
+	content = extractBetween(html, `<div class="description__text">`, `</div>`)
+	if content == "" {
+		content = extractMetaContent(html, "og:description")
+	}
+
+	content = cleanHTML(content)
+	company = cleanText(company)
+	position = cleanText(position)
+
+	return content, company, position
+}
+
+// extractAshby extracts job posting from Ashby pages
+func (f *Fetcher) extractAshby(html string) (content, company, position string) {
+	position = extractMetaContent(html, "og:title")
+	company = extractMetaContent(html, "og:site_name")
+
+	content = extractBetween(html, `<div class="ashby-job-posting-description">`, `</div>`)
+
+	content = cleanHTML(content)
+	company = cleanText(company)
+	position = cleanText(position)
+
+	return content, company, position
+}
+
+// extractGeneric extracts job posting from any HTML page
+func (f *Fetcher) extractGeneric(html string) (content, company, position string) {
+	// Try common meta tags
+	position = extractMetaContent(html, "og:title")
+	if position == "" {
+		position = extractBetween(html, `<title>`, `</title>`)
+	}
+
+	company = extractMetaContent(html, "og:site_name")
+
+	// Try to find main content
+	content = extractMetaContent(html, "og:description")
+
+	// Look for common job posting containers
+	containers := []string{
+		`<div class="job-description">`,
+		`<div id="job-description">`,
+		`<div class="description">`,
+		`<article>`,
+		`<main>`,
+	}
+
+	for _, container := range containers {
+		endTag := "</" + strings.TrimPrefix(strings.Split(container, " ")[0], "<")
+		if extracted := extractBetween(html, container, endTag); extracted != "" {
+			content = extracted
+			break
+		}
+	}
+
+	content = cleanHTML(content)
+	company = cleanText(company)
+	position = cleanText(position)
+
+	return content, company, position
+}
+
+// GenerateFilename creates a filename from company and position
+func (f *Fetcher) GenerateFilename(company, position string, parsedURL *url.URL) string {
+	// Use company and position if available
+	if company != "" && position != "" {
+		return sanitizeFilename(company) + "-" + sanitizeFilename(position) + "-posting"
+	}
+
+	// Fall back to using the URL path
+	path := parsedURL.Path
+	path = strings.Trim(path, "/")
+	parts := strings.Split(path, "/")
+
+	if len(parts) > 0 {
+		// Use last meaningful part of path
+		name := parts[len(parts)-1]
+		if name == "" && len(parts) > 1 {
+			name = parts[len(parts)-2]
+		}
+		return sanitizeFilename(name) + "-posting"
+	}
+
+	// Last resort: use host
+	return sanitizeFilename(parsedURL.Host) + "-posting"
+}
+
+// FormatOutput creates the final markdown output with metadata
+func (f *Fetcher) FormatOutput(content, sourceURL, company, position string) string {
+	var sb strings.Builder
+
+	sb.WriteString("---\n")
+	sb.WriteString(fmt.Sprintf("source: %s\n", sourceURL))
+	sb.WriteString(fmt.Sprintf("fetched: %s\n", time.Now().Format("2006-01-02 15:04:05")))
+	if company != "" {
+		sb.WriteString(fmt.Sprintf("company: %s\n", company))
+	}
+	if position != "" {
+		sb.WriteString(fmt.Sprintf("position: %s\n", position))
+	}
+	sb.WriteString("---\n\n")
+
+	if position != "" {
+		sb.WriteString(fmt.Sprintf("# %s\n\n", position))
+	}
+	if company != "" {
+		sb.WriteString(fmt.Sprintf("**Company:** %s\n\n", company))
+	}
+
+	sb.WriteString("## Job Description\n\n")
+	sb.WriteString(content)
+	sb.WriteString("\n")
+
+	return sb.String()
+}
+
+// Helper functions
+
+func extractBetween(html, start, end string) string {
+	startIdx := strings.Index(html, start)
+	if startIdx == -1 {
+		return ""
+	}
+	startIdx += len(start)
+
+	endIdx := strings.Index(html[startIdx:], end)
+	if endIdx == -1 {
+		return ""
+	}
+
+	return html[startIdx : startIdx+endIdx]
+}
+
+func extractMetaContent(html, property string) string {
+	// Try og: prefix
+	pattern := fmt.Sprintf(`<meta[^>]*property="%s"[^>]*content="([^"]*)"`, property)
+	re := regexp.MustCompile(pattern)
+	if matches := re.FindStringSubmatch(html); len(matches) > 1 {
+		return matches[1]
+	}
+
+	// Try name attribute
+	pattern = fmt.Sprintf(`<meta[^>]*name="%s"[^>]*content="([^"]*)"`, property)
+	re = regexp.MustCompile(pattern)
+	if matches := re.FindStringSubmatch(html); len(matches) > 1 {
+		return matches[1]
+	}
+
+	// Try reversed order (content before property)
+	pattern = fmt.Sprintf(`<meta[^>]*content="([^"]*)"[^>]*property="%s"`, property)
+	re = regexp.MustCompile(pattern)
+	if matches := re.FindStringSubmatch(html); len(matches) > 1 {
+		return matches[1]
+	}
+
+	return ""
+}
+
+func cleanHTML(html string) string {
+	// Remove script and style tags
+	scriptRe := regexp.MustCompile(`(?s)<script[^>]*>.*?</script>`)
+	html = scriptRe.ReplaceAllString(html, "")
+
+	styleRe := regexp.MustCompile(`(?s)<style[^>]*>.*?</style>`)
+	html = styleRe.ReplaceAllString(html, "")
+
+	// Convert common HTML elements to markdown
+	html = regexp.MustCompile(`<h1[^>]*>`).ReplaceAllString(html, "\n# ")
+	html = regexp.MustCompile(`</h1>`).ReplaceAllString(html, "\n")
+	html = regexp.MustCompile(`<h2[^>]*>`).ReplaceAllString(html, "\n## ")
+	html = regexp.MustCompile(`</h2>`).ReplaceAllString(html, "\n")
+	html = regexp.MustCompile(`<h3[^>]*>`).ReplaceAllString(html, "\n### ")
+	html = regexp.MustCompile(`</h3>`).ReplaceAllString(html, "\n")
+	html = regexp.MustCompile(`<h4[^>]*>`).ReplaceAllString(html, "\n#### ")
+	html = regexp.MustCompile(`</h4>`).ReplaceAllString(html, "\n")
+
+	html = regexp.MustCompile(`<li[^>]*>`).ReplaceAllString(html, "\n- ")
+	html = regexp.MustCompile(`</li>`).ReplaceAllString(html, "")
+
+	html = regexp.MustCompile(`<p[^>]*>`).ReplaceAllString(html, "\n\n")
+	html = regexp.MustCompile(`</p>`).ReplaceAllString(html, "\n")
+
+	html = regexp.MustCompile(`<br\s*/?>`).ReplaceAllString(html, "\n")
+	html = regexp.MustCompile(`<hr\s*/?>`).ReplaceAllString(html, "\n---\n")
+
+	html = regexp.MustCompile(`<strong[^>]*>`).ReplaceAllString(html, "**")
+	html = regexp.MustCompile(`</strong>`).ReplaceAllString(html, "**")
+	html = regexp.MustCompile(`<b[^>]*>`).ReplaceAllString(html, "**")
+	html = regexp.MustCompile(`</b>`).ReplaceAllString(html, "**")
+
+	html = regexp.MustCompile(`<em[^>]*>`).ReplaceAllString(html, "*")
+	html = regexp.MustCompile(`</em>`).ReplaceAllString(html, "*")
+	html = regexp.MustCompile(`<i[^>]*>`).ReplaceAllString(html, "*")
+	html = regexp.MustCompile(`</i>`).ReplaceAllString(html, "*")
+
+	// Remove remaining HTML tags
+	tagRe := regexp.MustCompile(`<[^>]+>`)
+	html = tagRe.ReplaceAllString(html, "")
+
+	// Decode HTML entities
+	html = strings.ReplaceAll(html, "&nbsp;", " ")
+	html = strings.ReplaceAll(html, "&amp;", "&")
+	html = strings.ReplaceAll(html, "&lt;", "<")
+	html = strings.ReplaceAll(html, "&gt;", ">")
+	html = strings.ReplaceAll(html, "&quot;", "\"")
+	html = strings.ReplaceAll(html, "&#39;", "'")
+	html = strings.ReplaceAll(html, "&apos;", "'")
+
+	// Clean up whitespace
+	html = regexp.MustCompile(`\n{3,}`).ReplaceAllString(html, "\n\n")
+	html = regexp.MustCompile(`[ \t]+`).ReplaceAllString(html, " ")
+
+	return strings.TrimSpace(html)
+}
+
+func cleanText(text string) string {
+	// Remove HTML tags
+	tagRe := regexp.MustCompile(`<[^>]+>`)
+	text = tagRe.ReplaceAllString(text, "")
+
+	// Decode entities
+	text = strings.ReplaceAll(text, "&nbsp;", " ")
+	text = strings.ReplaceAll(text, "&amp;", "&")
+	text = strings.ReplaceAll(text, "&lt;", "<")
+	text = strings.ReplaceAll(text, "&gt;", ">")
+	text = strings.ReplaceAll(text, "&quot;", "\"")
+	text = strings.ReplaceAll(text, "&#39;", "'")
+
+	return strings.TrimSpace(text)
+}
+
+func sanitizeFilename(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "-")
+	// Remove characters that are invalid in filenames
+	invalid := []string{"/", "\\", ":", "*", "?", "\"", "<", ">", "|", "'", ",", ".", "(", ")", "&", "@", "#", "$", "%", "^", "+", "=", "[", "]", "{", "}"}
+	for _, char := range invalid {
+		s = strings.ReplaceAll(s, char, "")
+	}
+	// Remove multiple dashes
+	s = regexp.MustCompile(`-+`).ReplaceAllString(s, "-")
+	s = strings.Trim(s, "-")
+	return s
+}
