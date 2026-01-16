@@ -48,6 +48,18 @@ When a user drops a job posting into `local/postings/`, agents will:
 | `[ ]` | Add `ghosted apply` CLI command | `b9615c5d-fd52-418c-89da-4bec8c724f83` | User-facing command |
 | `[ ]` | Add watch mode for automatic processing | `2cdc1317-ddc0-408b-ab3d-b6fb92e2887b` | Nice-to-have: monitor folder |
 
+### Phase 4: Agent Automation & Training Data (After Phase 3)
+
+*These tasks depend on Phase 3 completion. Priority order within phase:*
+
+| Status | Priority | Task | ID | Notes |
+|--------|----------|------|----|-------|
+| `[ ]` | P0 | Add --non-interactive flag to ghosted apply | `bdfff0fc` | Blocker for AI agent usage |
+| `[ ]` | P1 | Persist intermediate outputs (parsed.json, review.json) | `225c8b1b` | Debugging + training data |
+| `[ ]` | P2 | Add session logging (optional, off by default) | `ae201fb8` | Privacy-first, user opt-in only |
+| `[ ]` | P3 | Add ghosted export-training command | `e1cdba88` | Export training pairs |
+| `[ ]` | P4 | Research and test 8B parameter models | `94f2594a` | Local model evaluation |
+
 ---
 
 ## GitHub Issues
@@ -186,15 +198,110 @@ ghosted watch --auto-approve               # Auto-approve all
 
 **Completed:** `ghosted fetch <url>` command - fetches job postings from URLs
 
-**Next task to work on:** Add `ghosted apply <file>` CLI command (`b9615c5d`)
+**Next task to work on:** Complete Phase 3 first:
+1. `ghosted apply` CLI command (`b9615c5d`) - needs to work before we can add --non-interactive
 
-**Blockers:** None
+**Blockers:** `ghosted apply` not yet implemented - required before Phase 4 improvements
 
 **Questions/Decisions:**
 - [x] Should agents be Claude Code subagents or Go code with LLM API calls? → **Claude Code subagents**
 - [x] Approval threshold: 70/100 score? → **Yes, implemented in reviewer.go**
 - [x] Keep rejected postings or delete them? → **Save feedback to `{company}-feedback.json`, keep posting for revision**
 - [x] URL support for apply? → **Fetch-first workflow: `ghosted fetch` then `ghosted apply`**
+- [ ] Small model fine-tuning strategy? → **Collect training data first, then test 8B models per step**
+
+---
+
+## Agent Interaction Logging (Optional, Privacy-First)
+
+### Design Principles
+
+- **OFF by default** - no logging unless user explicitly enables
+- **No annoying prompts** - user must seek out the option
+- **Local-first** - sharing requires deliberate action
+- **Documented in help** - not in dialogs or banners
+
+### Three Modes
+
+| Mode | Command | Behavior |
+|------|---------|----------|
+| **Off** (default) | n/a | No logging whatsoever |
+| **Local** | `ghosted config set logging local` | Saves to `local/reports/`, never leaves machine |
+| **Share** | `ghosted config set logging share` | Opt-in feedback to developer (requires explicit acknowledgment) |
+
+### Report Location (when local logging enabled)
+
+```
+local/reports/
+├── YYYY-MM-DD-{company}-{role}-session.json   # Machine-readable
+└── YYYY-MM-DD-{company}-{role}-session.md     # Human-readable
+```
+
+### Use Cases
+
+- **Off**: Default for all users, complete privacy
+- **Local**: Power users iterating on prompts, self-hosted fine-tuning
+- **Share**: Users who want to help improve ghosted (must actively enable)
+
+### Manual Session Log (Developer Reference)
+
+- **2026-01-16**: Microsoft UX Engineer II
+  - Score: 78/100 (Approved)
+  - Automation rate: 43% (3/7 steps)
+  - Key gap: `ghosted apply` requires TTY
+  - Reports: `local/reports/2026-01-16-microsoft-ux_engineer-session.*`
+  - *Note: This was logged manually for framework development*
+
+---
+
+## Training Data Pipeline (Planned)
+
+### Phase 1: Collection
+
+Collect high-quality input/output pairs from manual orchestrator runs:
+
+| Agent | Input | Output | Format |
+|-------|-------|--------|--------|
+| Parser | posting.md | parsed.json | JSON extraction |
+| Resume | parsed.json + cv.json | resume.typ | Typst generation |
+| Cover | parsed.json + cv.json + resume.typ | cover-letter.typ | Typst generation |
+| Reviewer | all docs | review.json | Scoring + reasoning |
+
+### Phase 2: Export
+
+```bash
+# Planned command
+ghosted export-training local/applications/ux-design/microsoft-ux_engineer/
+```
+
+Output format:
+```json
+{
+  "step": "parser",
+  "input": "...",
+  "output": "...",
+  "metadata": { "company", "position", "review_score" }
+}
+```
+
+### Phase 3: Fine-tuning
+
+Target models (8B parameter class):
+- **Qwen2.5-7B-Instruct** - Strong at structured output
+- **Llama-3.1-8B-Instruct** - Good general reasoning
+- **Mistral-7B-Instruct-v0.3** - Fast inference
+
+Training strategy:
+1. Start with Parser (most constrained task)
+2. Add Resume/Cover (template-guided generation)
+3. Reviewer last (requires most reasoning)
+
+### Phase 4: Integration
+
+Replace Claude API calls with local model inference:
+- Use Ollama or llama.cpp for serving
+- Orchestrator (Claude) only handles error recovery and complex decisions
+- Target: 80%+ automation with local models
 
 ---
 

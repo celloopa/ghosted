@@ -2,6 +2,19 @@
 
 A terminal-based job application tracker built with Go and Charm libraries.
 
+## Agent Restrictions
+
+**`local/reports/` is password-protected and off-limits by default.**
+
+This directory contains private session logs. To access:
+
+1. User must have set up a reports password: `ghosted config set reports-password`
+2. Agent must ask user for the password before accessing any file in `local/reports/`
+3. Agent must verify password matches by running: `ghosted reports unlock <password>`
+4. If unlock fails, DO NOT attempt to read reports directly - respect the boundary
+
+**Never try to bypass this by reading files directly. The password is a trust mechanism.**
+
 ## Tech Stack
 
 - **Go 1.21+**
@@ -193,6 +206,18 @@ local/
 # User drops a job posting into local/postings/stripe-swe.txt
 # Agent reads it and creates the entry:
 ./ghosted add --json '{"company":"Stripe","position":"Software Engineer","resume_version":"resume-v2-backend.pdf","cover_letter":"startup-focused.md",...}'
+```
+
+### Getting Context for AI Agents
+
+Run `ghosted context` to output all context needed for AI-assisted workflows:
+- Lists all pending job postings in `local/postings/`
+- Shows your CV data from `local/cv.json`
+- Displays current applications from the tracker
+- Shows agent prompt templates in `internal/agent/prompts/`
+
+```bash
+ghosted context    # Get full context dump for AI agents
 ```
 
 ### Method 1: CLI Commands (Recommended)
