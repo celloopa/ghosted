@@ -147,6 +147,7 @@ ghosted fetch https://example.com/cv.json     # Explicit CV URL
 **Supported job boards:**
 - Lever (`jobs.lever.co`)
 - Greenhouse (`boards.greenhouse.io`)
+- Microsoft Careers (`careers.microsoft.com`)
 - Workday
 - LinkedIn Jobs
 - Ashby

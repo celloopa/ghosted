@@ -1,6 +1,6 @@
 # Multi-Agent Document Generation Pipeline - Progress Tracker
 
-> **Last Updated:** 2026-01-16 (unified fetch command complete)
+> **Last Updated:** 2026-01-16 (Microsoft fetcher #18 completed)
 > **Project:** ghosted
 > **Kanban Project ID:** `b666852b-0ef9-4ee0-8d91-a7f341697897`
 > **GitHub Repo:** `celloopa/ghosted`
@@ -48,6 +48,12 @@ When a user drops a job posting into `local/postings/`, agents will:
 | `[x]` | Add `ghosted apply` CLI command | `b9615c5d-fd52-418c-89da-4bec8c724f83` | ✅ Implemented with --dry-run, --auto-approve |
 | `[ ]` | Add watch mode for automatic processing | `2cdc1317-ddc0-408b-ab3d-b6fb92e2887b` | Nice-to-have: monitor folder |
 
+### Bug Fixes & Improvements
+
+| Status | Task | Issue | Notes |
+|--------|------|-------|-------|
+| `[x]` | Add Microsoft Careers site fetcher | [#18](https://github.com/celloopa/ghosted/issues/18) | ✅ `extractMicrosoft()` parses __NEXT_DATA__ JSON. 7 tests added. |
+
 ### Phase 4: Agent Automation & Training Data (After Phase 3)
 
 *These tasks depend on Phase 3 completion. Priority order within phase:*
@@ -69,6 +75,7 @@ All remaining tasks are tracked as GitHub issues. Each issue includes full imple
 
 | Issue | Title | Phase |
 |-------|-------|-------|
+| [#18](https://github.com/celloopa/ghosted/issues/18) | Add Microsoft Careers site fetcher | Bug Fix (In Progress) |
 | [#1](https://github.com/celloopa/ghosted/issues/1) | Implement Resume Generator Agent | Core |
 | [#2](https://github.com/celloopa/ghosted/issues/2) | Implement Cover Letter Generator Agent | Core |
 | [#3](https://github.com/celloopa/ghosted/issues/3) | Implement Hiring Manager Review Agent | Core |
@@ -204,8 +211,8 @@ ghosted watch --auto-approve               # Auto-approve all
 - `ghosted compile <id|dir>` command - compiles Typst to PDF and updates tracker
 - `ghosted cv fetch <website>` command - fetches CV from remote websites
 
-**Next task to work on:** Phase 4 improvements:
-1. Add `--non-interactive` flag to ghosted apply (`bdfff0fc`) - for AI agent usage
+**Next task:**
+- Add `--non-interactive` flag to ghosted apply (`bdfff0fc`) - for AI agent usage
 
 **Blockers:** None - Phase 3 complete!
 
@@ -342,6 +349,34 @@ Replace Claude API calls with local model inference:
 ---
 
 ## Completed Work Log
+
+### 2026-01-16: Microsoft Careers Site Fetcher (#18)
+
+Added specialized extractor for `careers.microsoft.com` and `apply.careers.microsoft.com` URLs.
+
+**Problem solved:** Microsoft Careers uses React/Next.js with job data embedded in `<script id="__NEXT_DATA__">` JSON. The generic fetcher was returning truncated content.
+
+**Files modified:**
+- `internal/fetch/fetcher.go` - Added `extractMicrosoft()` and helper functions
+- `internal/fetch/fetcher_test.go` - Added 7 new tests
+
+**Implementation:**
+- `extractMicrosoft()` - Main extractor, parses __NEXT_DATA__ JSON
+- `parseMicrosoftNextData()` - Navigates JSON structure (job, jobDetail, data)
+- `extractMicrosoftJobData()` - Extracts title, description, qualifications, responsibilities
+- `validateMicrosoftExtraction()` - Rejects numeric company names, empty/numeric positions
+- `isNumeric()` - Helper for validation
+
+**Test coverage:**
+- `TestFetcher_ExtractMicrosoft_NextData` - Full __NEXT_DATA__ parsing
+- `TestFetcher_ExtractMicrosoft_FallbackToMeta` - Meta tag fallback
+- `TestFetcher_ExtractMicrosoft_JobDetail` - Alternate JSON structure
+- `TestFetcher_ExtractMicrosoft_QualificationsArray` - Array handling
+- `TestIsNumeric` - Numeric validation
+- `TestValidateMicrosoftExtraction` - Data validation
+- `TestFetcher_ExtractMicrosoft_ApplySubdomain` - Subdomain support
+
+---
 
 ### 2026-01-16: Unified Fetch Command + TUI Fetch View
 

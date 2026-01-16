@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Microsoft Careers Fetcher** ([#18](https://github.com/celloopa/ghosted/issues/18))
+  - Added specialized extractor for `careers.microsoft.com` and `apply.careers.microsoft.com`
+  - Parses job data from Next.js `__NEXT_DATA__` JSON embedded in page
+  - Extracts title, description, qualifications, responsibilities, location, and employment type
+  - Falls back to meta tags when JSON parsing fails
+  - Validates data to reject numeric company names and empty positions
+  - 7 new tests for comprehensive coverage
+
 ## [0.7.0-beta] - 2026-01-16
 
 ### Added

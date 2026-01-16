@@ -1,6 +1,7 @@
 package fetch
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -176,6 +177,8 @@ func (f *Fetcher) ExtractJobPosting(html string, parsedURL *url.URL) (content, c
 		return f.extractLinkedIn(html)
 	case strings.Contains(host, "ashbyhq.com"):
 		return f.extractAshby(html)
+	case strings.Contains(host, "careers.microsoft.com"):
+		return f.extractMicrosoft(html)
 	default:
 		return f.extractGeneric(html)
 	}
@@ -276,6 +279,184 @@ func (f *Fetcher) extractAshby(html string) (content, company, position string) 
 	position = cleanText(position)
 
 	return content, company, position
+}
+
+// extractMicrosoft extracts job posting from Microsoft Careers pages
+// Microsoft uses Next.js with job data in <script id="__NEXT_DATA__"> JSON
+func (f *Fetcher) extractMicrosoft(html string) (content, company, position string) {
+	// Default company name
+	company = "Microsoft"
+
+	// Try to extract from __NEXT_DATA__ JSON
+	nextDataStart := strings.Index(html, `<script id="__NEXT_DATA__"`)
+	if nextDataStart != -1 {
+		// Find the start of the JSON content
+		jsonStart := strings.Index(html[nextDataStart:], ">")
+		if jsonStart != -1 {
+			jsonStart += nextDataStart + 1
+			jsonEnd := strings.Index(html[jsonStart:], "</script>")
+			if jsonEnd != -1 {
+				jsonData := html[jsonStart : jsonStart+jsonEnd]
+				content, position = f.parseMicrosoftNextData(jsonData)
+			}
+		}
+	}
+
+	// Fallback to meta tags if __NEXT_DATA__ parsing failed
+	if position == "" {
+		position = extractMetaContent(html, "og:title")
+		// Clean up Microsoft title format: "Job Title | Microsoft Careers"
+		if idx := strings.Index(position, " | "); idx != -1 {
+			position = position[:idx]
+		}
+	}
+
+	if content == "" {
+		content = extractMetaContent(html, "og:description")
+	}
+
+	// Validate extracted data
+	content, company, position = f.validateMicrosoftExtraction(content, company, position)
+
+	content = cleanHTML(content)
+	company = cleanText(company)
+	position = cleanText(position)
+
+	return content, company, position
+}
+
+// parseMicrosoftNextData parses the __NEXT_DATA__ JSON and extracts job details
+func (f *Fetcher) parseMicrosoftNextData(jsonData string) (content, position string) {
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonData), &data); err != nil {
+		return "", ""
+	}
+
+	// Navigate to props.pageProps where job data typically lives
+	props, ok := data["props"].(map[string]interface{})
+	if !ok {
+		return "", ""
+	}
+
+	pageProps, ok := props["pageProps"].(map[string]interface{})
+	if !ok {
+		return "", ""
+	}
+
+	// Try to find job data - Microsoft uses various structures
+	// Common paths: pageProps.job, pageProps.jobDetail, pageProps.data
+
+	// Try pageProps.job first
+	if job, ok := pageProps["job"].(map[string]interface{}); ok {
+		return f.extractMicrosoftJobData(job)
+	}
+
+	// Try pageProps.jobDetail
+	if jobDetail, ok := pageProps["jobDetail"].(map[string]interface{}); ok {
+		return f.extractMicrosoftJobData(jobDetail)
+	}
+
+	// Try pageProps.data
+	if dataObj, ok := pageProps["data"].(map[string]interface{}); ok {
+		return f.extractMicrosoftJobData(dataObj)
+	}
+
+	// Try pageProps directly (sometimes job data is at this level)
+	return f.extractMicrosoftJobData(pageProps)
+}
+
+// extractMicrosoftJobData extracts content and position from a job data object
+func (f *Fetcher) extractMicrosoftJobData(job map[string]interface{}) (content, position string) {
+	// Extract position/title
+	for _, key := range []string{"title", "jobTitle", "name", "positionTitle"} {
+		if val, ok := job[key].(string); ok && val != "" {
+			position = val
+			break
+		}
+	}
+
+	// Extract description/content
+	var descParts []string
+
+	// Try various description fields
+	for _, key := range []string{"description", "jobDescription", "fullDescription", "summary"} {
+		if val, ok := job[key].(string); ok && val != "" {
+			descParts = append(descParts, val)
+		}
+	}
+
+	// Try qualifications
+	if quals, ok := job["qualifications"].(string); ok && quals != "" {
+		descParts = append(descParts, "\n\n## Qualifications\n\n"+quals)
+	} else if quals, ok := job["qualifications"].([]interface{}); ok {
+		descParts = append(descParts, "\n\n## Qualifications\n")
+		for _, q := range quals {
+			if qs, ok := q.(string); ok {
+				descParts = append(descParts, "- "+qs)
+			}
+		}
+	}
+
+	// Try responsibilities
+	if resp, ok := job["responsibilities"].(string); ok && resp != "" {
+		descParts = append(descParts, "\n\n## Responsibilities\n\n"+resp)
+	} else if resp, ok := job["responsibilities"].([]interface{}); ok {
+		descParts = append(descParts, "\n\n## Responsibilities\n")
+		for _, r := range resp {
+			if rs, ok := r.(string); ok {
+				descParts = append(descParts, "- "+rs)
+			}
+		}
+	}
+
+	// Try location info
+	if loc, ok := job["location"].(string); ok && loc != "" {
+		descParts = append(descParts, "\n\n**Location:** "+loc)
+	} else if loc, ok := job["primaryLocation"].(string); ok && loc != "" {
+		descParts = append(descParts, "\n\n**Location:** "+loc)
+	}
+
+	// Try employment type
+	if empType, ok := job["employmentType"].(string); ok && empType != "" {
+		descParts = append(descParts, "\n\n**Employment Type:** "+empType)
+	}
+
+	content = strings.Join(descParts, "\n")
+	return content, position
+}
+
+// validateMicrosoftExtraction validates and cleans up extracted Microsoft data
+func (f *Fetcher) validateMicrosoftExtraction(content, company, position string) (string, string, string) {
+	// Reject numeric company names (indicates parsing error)
+	if isNumeric(company) {
+		company = "Microsoft"
+	}
+
+	// Reject empty or very short positions
+	if len(strings.TrimSpace(position)) < 3 {
+		position = ""
+	}
+
+	// Reject positions that are just numbers
+	if isNumeric(position) {
+		position = ""
+	}
+
+	return content, company, position
+}
+
+// isNumeric checks if a string contains only digits
+func isNumeric(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // extractGeneric extracts job posting from any HTML page
