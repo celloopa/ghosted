@@ -369,7 +369,11 @@ ghosted fetch https://example.com/cv.json        # CV from explicit URL
 ```
 
 **Usage (TUI):**
-Press 'F' from the list view to open the fetch dialog.
+Press `f` from the list view to open the fetch dialog.
+
+**Key binding changes:**
+- `s` = filter by status (was `f`)
+- `f` = fetch URL (new)
 
 ---
 

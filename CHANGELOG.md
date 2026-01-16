@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.0-beta] - 2026-01-16
+
 ### Added
 
 - **Unified Fetch Command** - Auto-detects job postings vs CV
@@ -17,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **CV fetch**: Bare domain or `/cv.json` path → saves to `local/cv.json`
     - Fetches JSON Resume format from `{domain}/cv.json`
     - Extracts name and label from JSON Resume basics
-  - **TUI fetch view**: Press `F` from the list view to fetch via the TUI
+  - **TUI fetch view**: Press `f` from the list view to fetch via the TUI
     - URL input with auto-detection
     - Async fetch with loading state and result display
   ```bash
@@ -70,3 +72,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     - `cover.md` - Cover letter generator (creates personalized Typst cover letters)
     - `reviewer.md` - Hiring manager reviewer (scores documents with feedback)
     - `tracker.md` - Tracker integration (generates ghosted CLI commands)
+
+### Changed
+
+- **TUI key bindings**: `s` for filter by status, `f` for fetch (previously `f` for filter)
