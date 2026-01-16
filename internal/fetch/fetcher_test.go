@@ -325,3 +325,279 @@ func TestNewFetcher(t *testing.T) {
 		t.Error("Client should not be nil")
 	}
 }
+
+func TestFetcher_ExtractMicrosoft_NextData(t *testing.T) {
+	f := NewFetcher("")
+
+	// Simulated Microsoft Careers page with __NEXT_DATA__
+	html := `
+		<html>
+		<head>
+		<meta property="og:title" content="UX Designer | Microsoft Careers">
+		<meta property="og:description" content="Join Microsoft as a UX Designer">
+		</head>
+		<body>
+		<script id="__NEXT_DATA__" type="application/json">
+		{
+			"props": {
+				"pageProps": {
+					"job": {
+						"title": "UX Designer II",
+						"description": "We are looking for a passionate UX Designer to join our team.",
+						"qualifications": "5+ years of experience in UX design",
+						"responsibilities": "Design user interfaces for Microsoft products",
+						"location": "Redmond, WA",
+						"employmentType": "Full-time"
+					}
+				}
+			}
+		}
+		</script>
+		</body>
+		</html>
+	`
+
+	parsedURL, _ := url.Parse("https://careers.microsoft.com/us/en/job/123456")
+	content, company, position := f.ExtractJobPosting(html, parsedURL)
+
+	if company != "Microsoft" {
+		t.Errorf("company = %q, want %q", company, "Microsoft")
+	}
+	if position != "UX Designer II" {
+		t.Errorf("position = %q, want %q", position, "UX Designer II")
+	}
+	if !strings.Contains(content, "passionate UX Designer") {
+		t.Errorf("content should contain job description, got %q", content)
+	}
+	if !strings.Contains(content, "Redmond, WA") {
+		t.Errorf("content should contain location, got %q", content)
+	}
+}
+
+func TestFetcher_ExtractMicrosoft_FallbackToMeta(t *testing.T) {
+	f := NewFetcher("")
+
+	// Microsoft page without __NEXT_DATA__ - should fall back to meta tags
+	html := `
+		<html>
+		<head>
+		<meta property="og:title" content="Software Engineer | Microsoft Careers">
+		<meta property="og:description" content="Build amazing software at Microsoft">
+		</head>
+		<body>
+		<div>Some content</div>
+		</body>
+		</html>
+	`
+
+	parsedURL, _ := url.Parse("https://careers.microsoft.com/us/en/job/789")
+	content, company, position := f.ExtractJobPosting(html, parsedURL)
+
+	if company != "Microsoft" {
+		t.Errorf("company = %q, want %q", company, "Microsoft")
+	}
+	// Title should have " | Microsoft Careers" stripped
+	if position != "Software Engineer" {
+		t.Errorf("position = %q, want %q", position, "Software Engineer")
+	}
+	if !strings.Contains(content, "Build amazing software") {
+		t.Errorf("content should contain og:description, got %q", content)
+	}
+}
+
+func TestFetcher_ExtractMicrosoft_JobDetail(t *testing.T) {
+	f := NewFetcher("")
+
+	// Alternative structure with jobDetail instead of job
+	html := `
+		<html>
+		<script id="__NEXT_DATA__" type="application/json">
+		{
+			"props": {
+				"pageProps": {
+					"jobDetail": {
+						"jobTitle": "Product Manager",
+						"jobDescription": "Lead product development at Microsoft",
+						"primaryLocation": "Seattle, WA"
+					}
+				}
+			}
+		}
+		</script>
+		</html>
+	`
+
+	parsedURL, _ := url.Parse("https://careers.microsoft.com/job/456")
+	content, company, position := f.ExtractJobPosting(html, parsedURL)
+
+	if company != "Microsoft" {
+		t.Errorf("company = %q, want %q", company, "Microsoft")
+	}
+	if position != "Product Manager" {
+		t.Errorf("position = %q, want %q", position, "Product Manager")
+	}
+	if !strings.Contains(content, "Lead product development") {
+		t.Errorf("content should contain jobDescription, got %q", content)
+	}
+}
+
+func TestFetcher_ExtractMicrosoft_QualificationsArray(t *testing.T) {
+	f := NewFetcher("")
+
+	// Test with qualifications as array
+	html := `
+		<html>
+		<script id="__NEXT_DATA__" type="application/json">
+		{
+			"props": {
+				"pageProps": {
+					"job": {
+						"title": "Senior Engineer",
+						"description": "Join our engineering team",
+						"qualifications": ["Bachelor's degree", "5+ years experience", "Strong coding skills"]
+					}
+				}
+			}
+		}
+		</script>
+		</html>
+	`
+
+	parsedURL, _ := url.Parse("https://careers.microsoft.com/job/789")
+	content, _, _ := f.ExtractJobPosting(html, parsedURL)
+
+	if !strings.Contains(content, "Bachelor's degree") {
+		t.Errorf("content should contain qualifications, got %q", content)
+	}
+	if !strings.Contains(content, "5+ years experience") {
+		t.Errorf("content should contain qualifications, got %q", content)
+	}
+}
+
+func TestIsNumeric(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"123", true},
+		{"0", true},
+		{"123456789", true},
+		{"abc", false},
+		{"12a3", false},
+		{"", false},
+		{"  ", false},
+		{" 123 ", true},
+		{"Microsoft", false},
+		{"123-456", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := isNumeric(tt.input)
+			if got != tt.expected {
+				t.Errorf("isNumeric(%q) = %v, want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestValidateMicrosoftExtraction(t *testing.T) {
+	f := NewFetcher("")
+
+	tests := []struct {
+		name            string
+		content         string
+		company         string
+		position        string
+		wantCompany     string
+		wantPosition    string
+	}{
+		{
+			name:         "valid data",
+			content:      "Job description",
+			company:      "Microsoft",
+			position:     "Software Engineer",
+			wantCompany:  "Microsoft",
+			wantPosition: "Software Engineer",
+		},
+		{
+			name:         "numeric company rejected",
+			content:      "Job description",
+			company:      "12345",
+			position:     "Engineer",
+			wantCompany:  "Microsoft",
+			wantPosition: "Engineer",
+		},
+		{
+			name:         "short position rejected",
+			content:      "Job description",
+			company:      "Microsoft",
+			position:     "AB",
+			wantCompany:  "Microsoft",
+			wantPosition: "",
+		},
+		{
+			name:         "numeric position rejected",
+			content:      "Job description",
+			company:      "Microsoft",
+			position:     "123456",
+			wantCompany:  "Microsoft",
+			wantPosition: "",
+		},
+		{
+			name:         "empty position rejected",
+			content:      "Job description",
+			company:      "Microsoft",
+			position:     "",
+			wantCompany:  "Microsoft",
+			wantPosition: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, gotCompany, gotPosition := f.validateMicrosoftExtraction(tt.content, tt.company, tt.position)
+			if gotCompany != tt.wantCompany {
+				t.Errorf("company = %q, want %q", gotCompany, tt.wantCompany)
+			}
+			if gotPosition != tt.wantPosition {
+				t.Errorf("position = %q, want %q", gotPosition, tt.wantPosition)
+			}
+		})
+	}
+}
+
+func TestFetcher_ExtractMicrosoft_ApplySubdomain(t *testing.T) {
+	f := NewFetcher("")
+
+	html := `
+		<html>
+		<script id="__NEXT_DATA__" type="application/json">
+		{
+			"props": {
+				"pageProps": {
+					"job": {
+						"title": "Data Scientist",
+						"description": "Work with big data at Microsoft"
+					}
+				}
+			}
+		}
+		</script>
+		</html>
+	`
+
+	// Test apply.careers.microsoft.com subdomain
+	parsedURL, _ := url.Parse("https://apply.careers.microsoft.com/job/123")
+	content, company, position := f.ExtractJobPosting(html, parsedURL)
+
+	if company != "Microsoft" {
+		t.Errorf("company = %q, want %q", company, "Microsoft")
+	}
+	if position != "Data Scientist" {
+		t.Errorf("position = %q, want %q", position, "Data Scientist")
+	}
+	if content == "" {
+		t.Error("content should not be empty")
+	}
+}
