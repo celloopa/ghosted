@@ -56,6 +56,8 @@ func main() {
 		cmdContext(s)
 	case "apply":
 		cmdApply(s, os.Args[2:])
+	case "compile":
+		cmdCompile(s, os.Args[2:])
 	case "upgrade":
 		cmdUpgrade()
 	case "cv":
@@ -98,6 +100,7 @@ Commands:
   delete <id>           Delete an application
   fetch <url|domain>    Fetch job posting or CV (auto-detected)
   apply <posting> [flags]      Run full pipeline on a job posting
+  compile <id|dir>      Compile .typ files to PDF and link to tracker
   context               Show context for AI agents (postings, CV, applications)
   cv fetch <website>    Fetch CV from website (downloads https://<website>/cv.json)
   upgrade               Update ghosted to the latest version
@@ -118,6 +121,8 @@ Examples:
   ghosted apply local/postings/acme-swe.md
   ghosted apply --dry-run local/postings/test.md
   ghosted apply --auto-approve local/postings/acme-swe.md
+  ghosted compile abc123                         # Compile by application ID
+  ghosted compile local/applications/swe/acme/   # Compile by directory
   ghosted cv fetch cello.design
 
 Apply Command Flags:
@@ -812,6 +817,232 @@ func cmdApply(s *store.Store, args []string) {
 	} else {
 		fmt.Println("\nApplication added to tracker. Run 'ghosted list' to view.")
 	}
+}
+
+// cmdCompile compiles .typ files to PDF and links them to the tracker
+func cmdCompile(s *store.Store, args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: ghosted compile <id|dir>")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "Examples:")
+		fmt.Fprintln(os.Stderr, "  ghosted compile abc123")
+		fmt.Fprintln(os.Stderr, "  ghosted compile local/applications/swe/acme/")
+		os.Exit(1)
+	}
+
+	target := args[0]
+	var appDir string
+	var app *model.Application
+
+	// Check if target is a directory or an application ID
+	if info, err := os.Stat(target); err == nil && info.IsDir() {
+		// Target is a directory
+		appDir = target
+		// Try to find matching application by company/position from folder name
+		app = findAppByFolder(s, target)
+	} else {
+		// Target is an application ID - find the app and its folder
+		app = findAppByID(s, target)
+		if app == nil {
+			fmt.Fprintf(os.Stderr, "Error: application not found: %s\n", target)
+			os.Exit(1)
+		}
+		// Derive folder from app data
+		appDir = findAppFolder(app)
+		if appDir == "" {
+			fmt.Fprintf(os.Stderr, "Error: could not find application folder for %s\n", target)
+			fmt.Fprintln(os.Stderr, "Tip: Use directory path directly: ghosted compile local/applications/...")
+			os.Exit(1)
+		}
+	}
+
+	// Check directory exists
+	if _, err := os.Stat(appDir); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "Error: directory not found: %s\n", appDir)
+		os.Exit(1)
+	}
+
+	// Find .typ files
+	resumeTyp := filepath.Join(appDir, "resume.typ")
+	coverTyp := filepath.Join(appDir, "cover-letter.typ")
+
+	var resumePDF, coverPDF string
+	compiled := false
+
+	// Check for typst
+	if _, err := exec.LookPath("typst"); err != nil {
+		fmt.Fprintln(os.Stderr, "Error: typst is not installed or not in PATH")
+		fmt.Fprintln(os.Stderr, "Install from: https://github.com/typst/typst")
+		os.Exit(1)
+	}
+
+	// Compile resume if exists
+	if _, err := os.Stat(resumeTyp); err == nil {
+		resumePDF = filepath.Join(appDir, "resume.pdf")
+		fmt.Printf("Compiling %s...\n", resumeTyp)
+		cmd := exec.Command("typst", "compile", resumeTyp, resumePDF)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error compiling resume: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("  → %s\n", resumePDF)
+		compiled = true
+	}
+
+	// Compile cover letter if exists
+	if _, err := os.Stat(coverTyp); err == nil {
+		coverPDF = filepath.Join(appDir, "cover-letter.pdf")
+		fmt.Printf("Compiling %s...\n", coverTyp)
+		cmd := exec.Command("typst", "compile", coverTyp, coverPDF)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error compiling cover letter: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("  → %s\n", coverPDF)
+		compiled = true
+	}
+
+	if !compiled {
+		fmt.Fprintln(os.Stderr, "No .typ files found in", appDir)
+		fmt.Fprintln(os.Stderr, "Expected: resume.typ and/or cover-letter.typ")
+		os.Exit(1)
+	}
+
+	// Update tracker if we have an application
+	if app != nil {
+		updated := false
+		if resumePDF != "" {
+			app.ResumeVersion = resumePDF
+			updated = true
+		}
+		if coverPDF != "" {
+			app.CoverLetter = coverPDF
+			updated = true
+		}
+
+		if updated {
+			if err := s.Update(*app); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to update tracker: %v\n", err)
+			} else {
+				fmt.Println("\nTracker updated:")
+				if resumePDF != "" {
+					fmt.Printf("  resume_version: %s\n", resumePDF)
+				}
+				if coverPDF != "" {
+					fmt.Printf("  cover_letter: %s\n", coverPDF)
+				}
+			}
+		}
+	} else {
+		fmt.Println("\nNote: No matching application found in tracker.")
+		fmt.Println("Documents compiled but not linked. Use 'ghosted update' to link manually.")
+	}
+
+	// Open folder (macOS/Linux)
+	fmt.Println("\nOpening folder...")
+	openFolder(appDir)
+}
+
+// findAppByID finds an application by partial ID
+func findAppByID(s *store.Store, id string) *model.Application {
+	apps := s.List()
+	for _, app := range apps {
+		if strings.HasPrefix(app.ID, id) {
+			return &app
+		}
+	}
+	return nil
+}
+
+// findAppByFolder tries to find an application matching a folder path
+func findAppByFolder(s *store.Store, folderPath string) *model.Application {
+	// Extract company and position from folder name
+	// Expected format: local/applications/{job-type}/{company}-{position}/
+	base := filepath.Base(strings.TrimSuffix(folderPath, "/"))
+	parts := strings.SplitN(base, "-", 2)
+	if len(parts) < 2 {
+		return nil
+	}
+
+	company := strings.ReplaceAll(parts[0], "_", " ")
+	position := strings.ReplaceAll(parts[1], "_", " ")
+
+	apps := s.List()
+	for _, app := range apps {
+		// Case-insensitive match
+		if strings.EqualFold(sanitizeForMatch(app.Company), sanitizeForMatch(company)) &&
+			strings.EqualFold(sanitizeForMatch(app.Position), sanitizeForMatch(position)) {
+			return &app
+		}
+	}
+	return nil
+}
+
+// findAppFolder finds the application folder for an app
+func findAppFolder(app *model.Application) string {
+	// Look in local/applications for a matching folder
+	baseDir := "local/applications"
+	jobTypes := []string{"swe", "fe-dev", "ux-design", "product-design"}
+
+	company := sanitizeFilename(app.Company)
+	position := sanitizeFilename(app.Position)
+	folderName := company + "-" + position
+
+	for _, jobType := range jobTypes {
+		path := filepath.Join(baseDir, jobType, folderName)
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+
+	// Try without job type subfolder
+	path := filepath.Join(baseDir, folderName)
+	if _, err := os.Stat(path); err == nil {
+		return path
+	}
+
+	return ""
+}
+
+// sanitizeFilename creates a safe filename from a string
+func sanitizeFilename(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "-")
+	// Remove characters that are invalid in filenames
+	invalid := []string{"/", "\\", ":", "*", "?", "\"", "<", ">", "|", "'"}
+	for _, char := range invalid {
+		s = strings.ReplaceAll(s, char, "")
+	}
+	return s
+}
+
+// sanitizeForMatch prepares a string for matching
+func sanitizeForMatch(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, "-", " ")
+	s = strings.ReplaceAll(s, "_", " ")
+	return strings.TrimSpace(s)
+}
+
+// openFolder opens a folder in the system file manager
+func openFolder(path string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", path)
+	case "linux":
+		cmd = exec.Command("xdg-open", path)
+	case "windows":
+		cmd = exec.Command("explorer", path)
+	default:
+		fmt.Printf("Open manually: %s\n", path)
+		return
+	}
+	cmd.Run() // Best effort, ignore errors
 }
 
 // isFlag checks if an argument is a flag
